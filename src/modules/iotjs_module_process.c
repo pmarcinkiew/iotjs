@@ -90,25 +90,33 @@ JHANDLER_FUNCTION(CompileNativePtr) {
 
   iotjs_string_t id = JHANDLER_GET_ARG(0, string);
   const char* name = iotjs_string_data(&id);
+    
+    printf("NATIVE[%d] %s\n", __LINE__, name);
 
   int i = 0;
   while (natives[i].name != NULL) {
+    printf("NATIVE[%d] %s compare %s\n", __LINE__, name, natives[i].name);
     if (!strcmp(natives[i].name, name)) {
       break;
     }
 
     i++;
   }
+    printf("NATIVE[%d] i=%d\n", __LINE__, i);
 
   if (natives[i].name != NULL) {
     bool throws;
 #ifdef ENABLE_SNAPSHOT
+    printf("NATIVE[%d] \n", __LINE__);
     iotjs_jval_t jres = iotjs_jhelper_exec_snapshot(natives[i].code,
                                                     natives[i].length, &throws);
+    printf("NATIVE[%d] \n", __LINE__);
 #else
+    printf("NATIVE[%d] \n", __LINE__);
     iotjs_jval_t jres =
         WrapEval(name, iotjs_string_size(&id), (const char*)natives[i].code,
                  natives[i].length, &throws);
+    printf("NATIVE[%d] \n", __LINE__);
 #endif
 
     if (!throws) {
@@ -118,6 +126,7 @@ JHANDLER_FUNCTION(CompileNativePtr) {
     }
     iotjs_jval_destroy(&jres);
   } else {
+    printf("NATIVE[%d] \n", __LINE__);
     iotjs_jval_t jerror = iotjs_jval_create_error("Unknown native module");
     iotjs_jhandler_throw(jhandler, &jerror);
     iotjs_jval_destroy(&jerror);

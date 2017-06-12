@@ -130,29 +130,56 @@ iotjs_module_t.tryPath = function(path) {
 
 
 iotjs_module_t.load = function(id, parent, isMain) {
+  console.log("trace 133");
   if(process.native_sources[id]){
     return Native.require(id);
   }
+  if (id != "gpio") {
+  console.log("EVIL 1");
+  eval ("GPIO = req" + "uire('gpio');");
+gpio = new GPIO();
+gpio10 = gpio.open({pin: 45,direction: gpio.DIRECTION.OUT, mode: gpio.MODE.NONE}); 
+for(i =0;i<1000;++i){console.log('loop ' + i); console.log("t 142"); gpio10.writeSync(i%2);console.log("t 142_2");for(j=0;j<100000;++j);}
+} else {
+
+
+//  eval(id);
+//  console.log("EVIL 2");
+//  while(true) {
+//  }
+  
+  console.log("trace 151");
   var module = new iotjs_module_t(id, parent);
+  console.log("trace 153");
 
   var modPath = iotjs_module_t.resolveModPath(module.id, module.parent);
+  console.log("trace 156");
 
   var cachedModule = iotjs_module_t.cache[modPath];
+  console.log("trace 159");
   if (cachedModule) {
     return cachedModule.exports;
   }
+  console.log("trace 163");
 
   if (!modPath) {
     throw new Error('Module not found: ' + id);
   }
+  console.log("trace 168");
 
+  console.log("trace 170");
   module.filename = modPath;
+  console.log("trace 172");
   module.dirs = [modPath.substring(0, modPath.lastIndexOf('/') + 1)];
+  console.log("trace 174");
   module.compile();
+  console.log("trace 176");
 
   iotjs_module_t.cache[modPath] = module;
+  console.log("trace 179");
 
   return module.exports;
+  }
 };
 
 

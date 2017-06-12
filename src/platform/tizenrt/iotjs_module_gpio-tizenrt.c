@@ -25,7 +25,8 @@ void iotjs_gpio_open_worker(uv_work_t* work_req) {
          _this->direction, _this->mode);
 
   // Open gpio pin
-  _this->gpio_context = iotbus_gpio_open(_this->pin);
+  //_this->gpio_context = iotbus_gpio_open((uint32_t)_this->pin);
+  _this->gpio_context = iotbus_gpio_open(45);
   if (_this->gpio_context == NULL) {
     req_data->result = false;
     return;
@@ -51,10 +52,13 @@ void iotjs_gpio_open_worker(uv_work_t* work_req) {
 
 bool iotjs_gpio_write(iotjs_gpio_t* gpio, bool value) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_gpio_t, gpio);
+    printf("[%s:%d]\n", __FILE__, __LINE__);
 
   if (iotbus_gpio_write(_this->gpio_context, value) < 0) {
+    printf("[%s:%d]\n", __FILE__, __LINE__);
     return false;
   }
+    printf("[%s:%d]\n", __FILE__, __LINE__);
   return true;
 }
 
