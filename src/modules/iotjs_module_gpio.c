@@ -269,7 +269,7 @@ JHANDLER_FUNCTION(GpioConstructor) {
 
 
 JHANDLER_FUNCTION(Write) {
-    printf("[%s:%d]\n", __FILE__, __LINE__);
+  printf("[%s:%d] First evil log\n", __FILE__, __LINE__);
   DJHANDLER_CHECK_THIS(object);
   DJHANDLER_CHECK_ARGS(1, boolean);
   DJHANDLER_CHECK_ARG_IF_EXIST(1, function);
@@ -280,17 +280,17 @@ JHANDLER_FUNCTION(Write) {
 
   bool value = JHANDLER_GET_ARG(0, boolean);
 
-    printf("[%s:%d]\n", __FILE__, __LINE__);
+  printf("[%s:%d] Second evil log\n", __FILE__, __LINE__);
   if (jcallback) {
-    printf("[%s:%d]\n", __FILE__, __LINE__);
+//    printf("[%s:%d]\n", __FILE__, __LINE__);
     GPIO_ASYNC_WITH_VALUE(write, jgpio, jcallback, kGpioOpWrite, value);
   } else {
-    printf("[%s:%d]\n", __FILE__, __LINE__);
+//    printf("[%s:%d]\n", __FILE__, __LINE__);
     if (!iotjs_gpio_write(gpio, value)) {
-    printf("[%s:%d]\n", __FILE__, __LINE__);
+//    printf("[%s:%d]\n", __FILE__, __LINE__);
       JHANDLER_THROW(COMMON, "GPIO WriteSync Error");
     }
-    printf("[%s:%d]\n", __FILE__, __LINE__);
+//    printf("[%s:%d]\n", __FILE__, __LINE__);
   }
 
   iotjs_jhandler_return_null(jhandler);

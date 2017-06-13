@@ -139,19 +139,19 @@ function gpioPinOpen(configuration, callback) {
   };
 
   GpioPin.prototype.writeSync = function(value) {
-    console.log("GPIO 142");
+//    console.log("GPIO 142");
     if (util.isNull(_binding)) {
       throw new Error('GPIO pin is not opened');
     }
-    console.log("GPIO 146");
+//    console.log("GPIO 146");
 
     if (!util.isNumber(value) && !util.isBoolean(value)) {
       throw new TypeError('Bad arguments - value should be Boolean');
     }
-    console.log("GPIO 151");
+//    console.log("GPIO 151");
 
     _binding.write(!!value);
-    console.log("GPIO 154");
+//    console.log("GPIO 154");
   };
 
   GpioPin.prototype.read = function(callback) {
