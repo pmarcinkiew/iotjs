@@ -17,6 +17,6 @@ include(CMakeForceCompiler)
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR armv7l)
 
-set(EXTERNAL_CMAKE_C_COMPILER arm-linux-gnueabihf-gcc)
+set(EXTERNAL_CMAKE_C_COMPILER arm-linux-gnueabi-gcc)
 
 CMAKE_FORCE_C_COMPILER(${EXTERNAL_CMAKE_C_COMPILER} GNU)
