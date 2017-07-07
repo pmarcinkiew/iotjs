@@ -14,7 +14,12 @@
  */
 
 
+#include <iotbus_gpio.h>
+
 #include "modules/iotjs_module_gpio.h"
+
+void iotjs_gpio_write(iotjs_gpio_t* gpio) {
+}
 
 
 void iotjs_gpio_open_worker(uv_work_t* work_req) {
@@ -25,8 +30,15 @@ void iotjs_gpio_open_worker(uv_work_t* work_req) {
          _this->direction, _this->mode);
 
   // Open gpio pin
-  _this->gpio_context = iotbus_gpio_open((int)_this->pin);
-  if (_this->gpio_context == NULL) {
+  _this->_private = malloc(sizeof(iotbus_gpio_context_h));
+  if (NULL == _this->_private) {
+    req_data->result = false;
+    return;
+  }
+
+  iotbus_gpio_context_h gpio_context = iotbus_gpio_open((int)_this->pin);
+  if (gpio_context) {
+    free(_this->_private);
     req_data->result = false;
     return;
   }
@@ -40,10 +52,13 @@ void iotjs_gpio_open_worker(uv_work_t* work_req) {
   } else {
     direction = IOTBUS_GPIO_DIRECTION_NONE;
   }
-  if (iotbus_gpio_set_direction(_this->gpio_context, direction) < 0) {
+  if (iotbus_gpio_set_direction(gpio_context, direction) < 0) {
+    free(_this->_private);
     req_data->result = false;
     return;
   }
+
+  *(_this->_private) = gpio_context
 
   req_data->result = true;
 }
@@ -51,8 +66,9 @@ void iotjs_gpio_open_worker(uv_work_t* work_req) {
 
 bool iotjs_gpio_write(iotjs_gpio_t* gpio, bool value) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_gpio_t, gpio);
+  iotbus_gpio_context_h gpio_context = (iotbus_gpio_context_h)(_this->_private);
 
-  if (iotbus_gpio_write(_this->gpio_context, value) < 0) {
+  if (iotbus_gpio_write(gpio_context, value) < 0) {
     return false;
   }
   return true;
@@ -61,15 +77,18 @@ bool iotjs_gpio_write(iotjs_gpio_t* gpio, bool value) {
 
 int iotjs_gpio_read(iotjs_gpio_t* gpio) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_gpio_t, gpio);
+  iotbus_gpio_context_h gpio_context = (iotbus_gpio_context_h)(_this->_private);
 
-  return iotbus_gpio_read(_this->gpio_context);
+  return iotbus_gpio_read(gpio_context);
 }
 
 
 bool iotjs_gpio_close(iotjs_gpio_t* gpio) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_gpio_t, gpio);
+  iotbus_gpio_context_h gpio_context = (iotbus_gpio_context_h)(_this->_private);
 
-  if (iotbus_gpio_close(_this->gpio_context) < 0) {
+  free(_this->_private);
+  if (iotbus_gpio_close(gpio_context) < 0) {
     return false;
   }
   return true;

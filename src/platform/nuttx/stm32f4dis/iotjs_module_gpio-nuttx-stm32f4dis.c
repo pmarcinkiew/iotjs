@@ -23,6 +23,7 @@
 #define GPIO_CONFIG_OK 0
 
 
+
 uint32_t gpioDirection[] = {
   GPIO_INPUT, GPIO_OUTPUT | GPIO_OUTPUT_SET | GPIO_FREQUENCY_DEFAULT,
 };
@@ -33,6 +34,9 @@ uint32_t gpioMode[] = {
   GPIO_PULLUP, GPIO_PULLDOWN, GPIO_FLOAT, GPIO_PUSHPULL, GPIO_OPENDRAIN,
 };
 
+
+void iotjs_gpio_initialize(iotjs_gpio_t_impl_t* _this) {
+}
 
 bool iotjs_gpio_write(iotjs_gpio_t* gpio, bool value) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_gpio_t, gpio);

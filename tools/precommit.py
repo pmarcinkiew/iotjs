@@ -206,6 +206,7 @@ for test in option.test:
             build(buildtype, ['--target-arch=arm',
                               '--target-os=tizen',
                               '--target-board=artik10',
+                              '--compile-flag=-D__LINUX__',
                               '--compile-flag=--sysroot=' + tizen_root
                               ] + os_dependency_module['linux'] + build_args)
 

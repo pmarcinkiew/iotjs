@@ -30,9 +30,8 @@ static iotjs_gpio_t* iotjs_gpio_create(const iotjs_jval_t* jgpio) {
   IOTJS_VALIDATED_STRUCT_CONSTRUCTOR(iotjs_gpio_t, gpio);
   iotjs_jobjectwrap_initialize(&_this->jobjectwrap, jgpio,
                                &this_module_native_info);
-#if defined(__linux__)
-  _this->value_fd = -1;
-#endif
+
+  iotjs_gpio_initialize(_this);
   return gpio;
 }
 
