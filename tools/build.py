@@ -290,6 +290,13 @@ def init_submodule():
     for module in ['http-parser', 'libtuv', 'jerry']:
         job_commands.append(('git', ['submodule', 'update', 'deps/' + module]))
     ex.check_run_parallel(job_commands, True)
+    # Temporary patch for invalid headers
+    if options.target_os in ['tizenrt', 'nuttx']:
+        ex.check_run_cmd("patch",
+                ["-d", "deps/jerry", "-p1",
+                 "-i", os.getcwd() + "/config/tizenrt/artik05x/" +
+                       "0001-Disable-conversion-and" +
+                       "-implicit-fallthrough-warnings.patch"])
 
 
 def build_cmake_args(options, for_jerry=False):
