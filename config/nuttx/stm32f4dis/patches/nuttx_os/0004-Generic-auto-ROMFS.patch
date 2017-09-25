@@ -1,0 +1,200 @@
+From 2e584ae86c95b15d591d1fde3cd2ac27c9701c93 Mon Sep 17 00:00:00 2001
+From: Tomasz Wozniak <t.wozniak@samsung.com>
+Date: Mon, 25 Sep 2017 23:56:28 +0200
+Subject: [PATCH] Generic auto ROMFS
+
+---
+ arch/arm/src/common/up_initialize.c |  5 ++++
+ fs/Kconfig                          | 23 +++++++++++++++
+ fs/Makefile                         |  5 ++++
+ fs/romfs_data.S                     | 14 +++++++++
+ fs/romfs_initialize.c               | 58 +++++++++++++++++++++++++++++++++++++
+ include/nuttx/fs/custom_romfs.h     | 17 +++++++++++
+ 6 files changed, 122 insertions(+)
+ create mode 100644 fs/romfs_data.S
+ create mode 100644 fs/romfs_initialize.c
+ create mode 100644 include/nuttx/fs/custom_romfs.h
+
+diff --git a/arch/arm/src/common/up_initialize.c b/arch/arm/src/common/up_initialize.c
+index 5c33df7..010d3c0 100644
+--- a/arch/arm/src/common/up_initialize.c
++++ b/arch/arm/src/common/up_initialize.c
+@@ -45,6 +45,7 @@
+ #include <nuttx/board.h>
+ #include <nuttx/sched_note.h>
+ #include <nuttx/drivers/drivers.h>
++#include <nuttx/fs/custom_romfs.h>
+ #include <nuttx/fs/loop.h>
+ #include <nuttx/net/loopback.h>
+ #include <nuttx/net/tun.h>
+@@ -261,6 +262,10 @@ void up_initialize(void)
+   devcrypto_register();
+ #endif
+ 
++#ifdef CONFIG_CUSTOM_ROMFS
++  romfs_initialize();
++#endif
++
+ #if defined(CONFIG_NETDEVICES) && !defined(CONFIG_NETDEV_LATEINIT)
+   /* Initialize the network */
+ 
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 603d9a5..eef7543 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -9,6 +9,29 @@ config DISABLE_MOUNTPOINT
+ 	bool "Disable support for mount points"
+ 	default n
+ 
++
++config CUSTOM_ROMFS
++    bool "Automount baked-in ROMFS image"
++    default n
++    depends on FS_ROMFS
++	---help---
++    "Select CUSTOM_ROMFS_IMAGEFILE, CUSTOM_ROMFS_DEV_MINOR, CUSTOM_ROMFS_MOUNTPOINT"
++
++config CUSTOM_ROMFS_DEV_MINOR
++    int "Minor for the block device backing the data"
++    depends on CUSTOM_ROMFS
++    default 64
++
++config CUSTOM_ROMFS_MOUNTPOINT
++    string "Mountpoint of the custom romfs image"
++    depends on CUSTOM_ROMFS
++    default "/rom"
++
++config CUSTOM_ROMFS_IMAGEFILE
++    string "ROMFS image file to include into build"
++    depends on CUSTOM_ROMFS
++    default "../rom.img"
++
+ config FS_AUTOMOUNTER
+ 	bool "Auto-mounter"
+ 	default n
+diff --git a/fs/Makefile b/fs/Makefile
+index 5ef45f8..aff3083 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -73,6 +73,11 @@ include procfs/Make.defs
+ include unionfs/Make.defs
+ include hostfs/Make.defs
+ 
++ifeq ($(CONFIG_CUSTOM_ROMFS),y)
++ASRCS += romfs_data.S
++CSRCS += romfs_initialize.c
++endif
++
+ endif
+ endif
+ 
+diff --git a/fs/romfs_data.S b/fs/romfs_data.S
+new file mode 100644
+index 0000000..4f226fc
+--- /dev/null
++++ b/fs/romfs_data.S
+@@ -0,0 +1,14 @@
++#include <nuttx/config.h>
++#include <nuttx/fs/custom_romfs.h>
++
++#ifdef CONFIG_CUSTOM_ROMFS
++    .section .rodata
++    .balign  16
++    .globl   romfs_data_begin
++romfs_data_begin:
++    .incbin  CONFIG_CUSTOM_ROMFS_IMAGEFILE
++    .balign   ROMFS_SECTOR_SIZE
++    .globl   romfs_data_end
++romfs_data_end:
++    .word   0xdead5008
++#endif /* CONFIG_CUSTOM_ROMFS */
+diff --git a/fs/romfs_initialize.c b/fs/romfs_initialize.c
+new file mode 100644
+index 0000000..662558d
+--- /dev/null
++++ b/fs/romfs_initialize.c
+@@ -0,0 +1,58 @@
++#include <nuttx/config.h>
++#include <nuttx/fs/custom_romfs.h>
++
++#include <sys/mount.h>
++#include <sys/types.h>
++#include <debug.h>
++#include <errno.h>
++
++#include <nuttx/drivers/ramdisk.h>
++
++#ifndef CONFIG_CUSTOM_ROMFS
++#error "CONFIG_CUSTOM_ROMFS must be defined"
++#else
++
++#ifndef CONFIG_CUSTOM_ROMFS_IMAGEFILE
++#error "CONFIG_CUSTOM_ROMFS_IMAGEFILE must be defined"
++#endif
++#ifndef CONFIG_CUSTOM_ROMFS_DEV_MINOR
++#error "CONFIG_CUSTOM_ROMFS_DEV_MINOR must be defined"
++#endif
++#ifndef CONFIG_CUSTOM_ROMFS_MOUNTPOINT
++#error "CONFIG_CUSTOM_ROMFS_MOUNTPOINT must be defined"
++#endif
++
++#define NSECTORS(size) (((size) + ROMFS_SECTOR_SIZE - 1)/ROMFS_SECTOR_SIZE)
++
++#  define STR_RAMDEVNO(m)    #m
++#  define MKMOUNT_DEVNAME(m) "/dev/ram" STR_RAMDEVNO(m)
++#  define MOUNT_DEVNAME      MKMOUNT_DEVNAME(CONFIG_CUSTOM_ROMFS_DEV_MINOR)
++int romfs_initialize(void)
++{
++  int  ret;
++
++  /* Create a ROM disk for the /etc filesystem */
++  long int romfs_data_len = &romfs_data_end - &romfs_data_begin;
++  ret = romdisk_register(CONFIG_CUSTOM_ROMFS_DEV_MINOR, &romfs_data_begin,
++                         NSECTORS(romfs_data_len), ROMFS_SECTOR_SIZE);
++  if (ret < 0)
++    {
++      ferr("ERROR: romdisk_register failed: %d\n", -ret);
++      return -1;
++    }
++
++  /* Mount the file system */
++  finfo("Mounting ROMFS filesystem at target=%s with source=%s\n",
++      CONFIG_CUSTOM_ROMFS_MOUNTPOINT, MOUNT_DEVNAME);
++
++  ret = mount(MOUNT_DEVNAME, CONFIG_CUSTOM_ROMFS_MOUNTPOINT, "romfs", MS_RDONLY, NULL);
++  if (ret < 0)
++    {
++      ferr("ERROR: mount(%s,%s,romfs) failed: %d\n",
++           MOUNT_DEVNAME, CONFIG_CUSTOM_ROMFS_MOUNTPOINT, errno);
++      return -1;
++    }
++  return 0;
++}
++
++#endif /* CONFIG_CUSTOM_ROMFS */
+diff --git a/include/nuttx/fs/custom_romfs.h b/include/nuttx/fs/custom_romfs.h
+new file mode 100644
+index 0000000..8513e66
+--- /dev/null
++++ b/include/nuttx/fs/custom_romfs.h
+@@ -0,0 +1,17 @@
++#ifndef __NUTTX_FS_CUSTOM_ROMFS__
++#define __NUTTX_FS_CUSTOM_ROMFS__
++
++#ifdef CONFIG_CUSTOM_ROMFS
++
++#define ROMFS_SECTOR_SIZE 64
++
++#ifndef __ASSEMBLY__
++extern void *romfs_data_begin;
++extern void *romfs_data_end;
++
++int romfs_initialize(void);
++#endif /* __ASSEMBLY__ */
++
++#endif /* CONFIG_CUSTOM_ROMFS */
++
++#endif /* __NUTTX_FS_CUSTOM_ROMFS__ */
+-- 
+2.7.4
+

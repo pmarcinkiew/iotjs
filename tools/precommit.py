@@ -83,24 +83,30 @@ def setup_nuttx_root(nuttx_root):
     fs.chdir('..')
 
     # Step 2
-    fs.maybe_make_directory(fs.join(nuttx_root, 'apps', 'system', 'iotjs'))
-    for file in fs.listdir(fs.join(path.PROJECT_ROOT,
-                                   'config', 'nuttx', 'stm32f4dis','app')):
-        fs.copy(fs.join(path.PROJECT_ROOT, 'config',
-                        'nuttx', 'stm32f4dis', 'app', file),
-                fs.join(nuttx_root, 'apps', 'system', 'iotjs'))
+    config_src_dir = fs.join(path.PROJECT_ROOT, 'config',
+                             'nuttx', 'stm32f4dis')
+    nuttx_iotjs_appdir = fs.join(nuttx_root, 'apps', 'system', 'iotjs')
+    fs.maybe_make_directory(nuttx_iotjs_appdir)
+    for file in fs.listdir(fs.join(config_src_dir, 'app')):
+        fs.copy(fs.join(config_src_dir, 'app', file), nuttx_iotjs_appdir)
 
-    # Step 3
+    # Step 3: patch the nuttx OS
+    fs.chdir(fs.join(nuttx_root, 'nuttx'))
+    patchdir = fs.join(config_src_dir, 'patches', 'nuttx_os')
+    for patchfile in sorted(fs.listdir(patchdir)):
+        if (patchfile.endswith('.patch')):
+            print('Applying OS patch %s/%s' % (patchdir, patchfile))
+            ex.check_run_cmd('git', ['am',
+                fs.join(patchdir, patchfile),
+                '--committer-date-is-author-date'])
+        else:
+            print('Rejected file %s/%s: not a patch' % (patchdir, patchfile))
+
+    # Step 4: configure nuttx OS & apps
     fs.chdir(fs.join(nuttx_root, 'nuttx', 'tools'))
     ex.check_run_cmd('./configure.sh', ['stm32f4discovery/usbnsh'])
-    fs.chdir('..')
-    fs.copy(fs.join(path.PROJECT_ROOT,
-                    'config',
-                    'nuttx',
-                    'stm32f4dis',
-                    '.config.travis'),
-            '.config')
-
+    fs.copy(fs.join(config_src_dir, 'usbnshiotjs_defconfig'),
+            fs.join(nuttx_root, 'nuttx', '.config'))
 
 def build_nuttx(nuttx_root, buildtype, maketarget):
     fs.chdir(fs.join(nuttx_root, 'nuttx'))
@@ -111,6 +117,18 @@ def build_nuttx(nuttx_root, buildtype, maketarget):
     ex.check_run_cmd('make',
                      [maketarget, 'IOTJS_ROOT_DIR=' + path.PROJECT_ROOT, rflag])
 
+def create_test_romfs():
+    if 'tests' in option.romfs:
+        print("Creating test ROMFS")
+        romfs_src_dir = create_romfs_srcdir()
+    else:
+        print("Creating empty ROMFS")
+        romfs_src_dir = create_romfs_srcdir(True)
+
+    rom_file = fs.join(path.PROJECT_ROOT, 'rom.img')
+    create_romfs_image(rom_file, romfs_src_dir)
+    fs.rmtree(romfs_src_dir)
+    return rom_file
 
 def setup_tizen_root(tizen_root):
     if fs.exists(tizen_root):
@@ -188,10 +206,13 @@ def split_entry(entry):
     # The right place to handle links and such
     return rel_target, glob.glob(entry)
 
-def create_romfs_srcdir():
+def create_romfs_srcdir(empty = False):
     '''Must be run in $TOPDIR'''
     srcdirobj = fs.mkdtemp()
     srcdir = str(srcdirobj)
+    if empty:
+        return srcdir
+
     with open(fs.join(path.PROJECT_ROOT, 'config', 'romfs.def')) as f:
         content = f.readlines()
     for entry in content:
@@ -270,14 +291,17 @@ if __name__ == '__main__':
                 fs.chdir(path.PROJECT_ROOT)
             # For now only romfs=tests works
             if 'tests' in option.romfs:
+                rom_file = create_test_romfs()
                 romfs_image_file = fs.join(tizenrt_root, "build", "output",
                                            "bin", "romfs.img")
-                romfs_src_dir = create_romfs_srcdir()
-                create_romfs_image(romfs_image_file, romfs_src_dir)
-                fs.rmtree(romfs_src_dir)
+                ex.check_run_cmd('cp', ['-f', rom_file, romfs_image_file])
+                #romfs_src_dir = create_romfs_srcdir()
+                #create_romfs_image(romfs_image_file, romfs_src_dir)
+                #fs.rmtree(romfs_src_dir)
 
         elif test == "nuttx":
             current_dir = os.getcwd()
+            rom_file = create_test_romfs()
             for buildtype in option.buildtype:
                 nuttx_root=fs.join(path.PROJECT_ROOT, 'deps', 'nuttx')
                 setup_nuttx_root(nuttx_root)
@@ -288,6 +312,8 @@ if __name__ == '__main__':
                                 '--target-board=stm32f4dis',
                                 '--jerry-heaplimit=78']
                                 + os_dependency_module['nuttx'] + build_args)
+                ex.check_run_cmd('cp',
+                    ['-f', rom_file, fs.join(nuttx_root, 'nuttx', 'rom.img')])
                 build_nuttx(nuttx_root, buildtype, 'all')
                 fs.chdir(current_dir)
 
