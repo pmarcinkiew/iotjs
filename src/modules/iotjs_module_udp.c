@@ -214,7 +214,7 @@ static void OnRecv(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
   }
 
   iotjs_jval_t jbuffer = iotjs_bufferwrap_create_buffer((size_t)nread);
-  iotjs_bufferwrap_t* buffer_wrap = iotjs_bufferwrap_from_jbuffer(&jbuffer);
+  iotjs_bufferwrap_t* buffer_wrap = iotjs_bufferwrap_from_jbuffer(jbuffer);
 
   iotjs_bufferwrap_copy(buffer_wrap, buf->base, (size_t)nread);
 
@@ -292,7 +292,7 @@ JHANDLER_FUNCTION(Send) {
   IOTJS_ASSERT(iotjs_jval_is_function(iotjs_jhandler_get_arg(jhandler, 3)) ||
                iotjs_jval_is_undefined(iotjs_jhandler_get_arg(jhandler, 3)));
 
-  const iotjs_jval_t* jbuffer = JHANDLER_GET_ARG(0, object);
+  const iotjs_jval_t jbuffer = *JHANDLER_GET_ARG(0, object);
   const unsigned short port = JHANDLER_GET_ARG(1, number);
   iotjs_string_t option_address = JHANDLER_GET_ARG(2, string);
   iotjs_string_t address = iotjs_create_ip(&option_address);
