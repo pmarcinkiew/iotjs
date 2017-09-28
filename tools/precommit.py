@@ -144,11 +144,11 @@ def copy_tiznert_stuff(tizenrt_root, iotjs_dir):
     tizenrt_iotjsapp_dir = fs.join(tizenrt_root, 'apps/system/iotjs')
     iotjs_tizenrt_appdir = fs.join(iotjs_dir, 'config/tizenrt/artik05x/app')
     ex.check_run_cmd('cp',
-                    ['-rfuT', iotjs_tizenrt_appdir, tizenrt_iotjsapp_dir])
+                    ['-rfT', iotjs_tizenrt_appdir, tizenrt_iotjsapp_dir])
 
     iotjs_config_dir = fs.join(iotjs_dir, 'config/tizenrt/artik05x/configs')
     tizenrt_config_dir = fs.join(tizenrt_root, 'build/configs/artik053/iotjs')
-    ex.check_run_cmd('cp', ['-rfuT', iotjs_config_dir, tizenrt_config_dir])
+    ex.check_run_cmd('cp', ['-rfT', iotjs_config_dir, tizenrt_config_dir])
 
 def setup_tizenrt_repo(tizenrt_root):
     if fs.exists(tizenrt_root):
