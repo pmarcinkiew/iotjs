@@ -307,6 +307,22 @@ def build_cmake_args(options, for_jerry=False):
     compile_flags += options.compile_flag
     compile_flags += options.jerry_compile_flag if for_jerry else []
 
+    # nosdtinc/nostdlib must be specified when toolchain contains
+    # a non-matching C library.
+    # This is the case with nuttx/TizenRT that come with uClibc,
+    # while prebuild GCC mostly comes with glibc/newlib.
+    # TODO: consider factoring this out to an option
+    if options.target_os in ['nuttx', 'tizenrt']:
+        compile_flags.extend(['-nostdinc', '-nostdlib'])
+
+    # With sysroot set, exclude default (host) directories from build.
+    if options.sysroot:
+        compile_flags.extend(['--sysroot', options.sysroot])
+        compile_flags.append('-isystem =/include')
+        if options.target_os == 'nuttx':
+            compile_flags.append('-isystem =/include/nuttx')
+        if options.target_os == 'tizenrt':
+            compile_flags.append('-isystem =/include/tinyara')
     cmake_args.append("-DCMAKE_C_FLAGS='%s'" % (' '.join(compile_flags)))
 
     # link flags
