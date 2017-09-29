@@ -24,7 +24,7 @@
 
 
 #if ENABLE_MODULE_ADC
-static void iotjs_pin_initialize_adc(const iotjs_jval_t* jobj) {
+static void iotjs_pin_initialize_adc(iotjs_jval_t jobj) {
   unsigned int number_bit;
 
 // ADC pin name is "ADC.(number)_(timer)".
@@ -64,7 +64,7 @@ static void iotjs_pin_initialize_adc(const iotjs_jval_t* jobj) {
 
 #if ENABLE_MODULE_GPIO
 
-static void iotjs_pin_initialize_gpio(const iotjs_jval_t* jobj) {
+static void iotjs_pin_initialize_gpio(iotjs_jval_t jobj) {
 // Set GPIO pin from configuration bits of nuttx.
 // GPIO pin name is "P(port)(pin)".
 #define SET_GPIO_CONSTANT(port, pin)                   \
@@ -107,15 +107,15 @@ static void iotjs_pin_initialize_gpio(const iotjs_jval_t* jobj) {
 
 #if ENABLE_MODULE_PWM
 
-static void iotjs_pin_initialize_pwm(const iotjs_jval_t* jobj) {
+static void iotjs_pin_initialize_pwm(iotjs_jval_t jobj) {
   unsigned int timer_bit;
 
 // Set PWM pin from configuration bits of nuttx.
 // PWM pin name is "PWM(timer).CH(channel)_(n)".
-#define SET_GPIO_CONSTANT(timer, channel, order)                         \
-  timer_bit = (GPIO_TIM##timer##_CH##channel##OUT_##order);              \
-  timer_bit |= (SYSIO_TIMER_NUMBER(timer));                              \
-  iotjs_jval_set_property_number(&jtim##timer, "CH" #channel "_" #order, \
+#define SET_GPIO_CONSTANT(timer, channel, order)                        \
+  timer_bit = (GPIO_TIM##timer##_CH##channel##OUT_##order);             \
+  timer_bit |= (SYSIO_TIMER_NUMBER(timer));                             \
+  iotjs_jval_set_property_number(jtim##timer, "CH" #channel "_" #order, \
                                  timer_bit);
 
 #define SET_GPIO_CONSTANT_CHANNEL(timer, channel) \
@@ -124,7 +124,7 @@ static void iotjs_pin_initialize_pwm(const iotjs_jval_t* jobj) {
 
 #define SET_GPIO_CONSTANT_TIM(timer)                     \
   iotjs_jval_t jtim##timer = iotjs_jval_create_object(); \
-  iotjs_jval_set_property_jval(jobj, "PWM" #timer, &jtim##timer);
+  iotjs_jval_set_property_jval(jobj, "PWM" #timer, jtim##timer);
 
 #define SET_GPIO_CONSTANT_TIM_1(timer) \
   SET_GPIO_CONSTANT_TIM(timer);        \
@@ -145,11 +145,11 @@ static void iotjs_pin_initialize_pwm(const iotjs_jval_t* jobj) {
   SET_GPIO_CONSTANT_TIM_4(1); // PA8, PE9, PA9, PE11, PA10, PE13, PA11, PE14
   iotjs_jval_destroy(&jtim1);
   SET_GPIO_CONSTANT_TIM_4(2); // PA0, PA15, PA1, PB3, PA2, PB10, PA3, PB11
-  iotjs_jval_set_property_number(&jtim2, "CH1_3", GPIO_TIM2_CH1OUT_3); // PA5
+  iotjs_jval_set_property_number(jtim2, "CH1_3", GPIO_TIM2_CH1OUT_3); // PA5
   iotjs_jval_destroy(&jtim2);
   SET_GPIO_CONSTANT_TIM_4(3); // PA6, PB4, PA7, PB5, PB0, PC8, PB1, PC9
-  iotjs_jval_set_property_number(&jtim3, "CH1_3", GPIO_TIM3_CH1OUT_3); // PC6
-  iotjs_jval_set_property_number(&jtim3, "CH2_3", GPIO_TIM3_CH2OUT_3); // PC7
+  iotjs_jval_set_property_number(jtim3, "CH1_3", GPIO_TIM3_CH1OUT_3); // PC6
+  iotjs_jval_set_property_number(jtim3, "CH2_3", GPIO_TIM3_CH2OUT_3); // PC7
   iotjs_jval_destroy(&jtim3);
   SET_GPIO_CONSTANT_TIM_4(4); // PB6, PD12, PB7, PD13, PB8, PD14, PB9, PD15
   iotjs_jval_destroy(&jtim4);
@@ -181,20 +181,20 @@ static void iotjs_pin_initialize_pwm(const iotjs_jval_t* jobj) {
 #endif /* ENABLE_MODULE_PWM */
 
 
-void iotjs_stm32f4dis_pin_initialize(const iotjs_jval_t* jobj) {
+void iotjs_stm32f4dis_pin_initialize(iotjs_jval_t jobj) {
   iotjs_jval_t jpin = iotjs_jval_create_object();
-  iotjs_jval_set_property_jval(jobj, "pin", &jpin);
+  iotjs_jval_set_property_jval(jobj, "pin", jpin);
 
 #if ENABLE_MODULE_ADC
-  iotjs_pin_initialize_adc(&jpin);
+  iotjs_pin_initialize_adc(jpin);
 #endif /* ENABLE_MODULE_ADC */
 
 #if ENABLE_MODULE_GPIO
-  iotjs_pin_initialize_gpio(&jpin);
+  iotjs_pin_initialize_gpio(jpin);
 #endif /* ENABLE_MODULE_GPIO */
 
 #if ENABLE_MODULE_PWM
-  iotjs_pin_initialize_pwm(&jpin);
+  iotjs_pin_initialize_pwm(jpin);
 #endif /* ENABLE_MODULE_PWM */
 
   iotjs_jval_destroy(&jpin);
