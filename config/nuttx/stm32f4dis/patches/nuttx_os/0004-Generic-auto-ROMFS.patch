@@ -35,7 +35,7 @@ index 5c33df7..010d3c0 100644
 +  romfs_initialize();
 +#endif
 +
- #if defined(CONFIG_NETDEVICES) && !defined(CONFIG_NETDEV_LATEINIT)
+ #ifndef CONFIG_NETDEV_LATEINIT
    /* Initialize the network */
  
 diff --git a/fs/Kconfig b/fs/Kconfig
