@@ -181,15 +181,15 @@ JHANDLER_FUNCTION(DoExit) {
 }
 
 
-void SetNativeSources(iotjs_jval_t* native_sources) {
+void SetNativeSources(iotjs_jval_t native_sources) {
   for (int i = 0; natives[i].name; i++) {
-    iotjs_jval_set_property_jval(native_sources, natives[i].name,
-                                 iotjs_jval_get_boolean(true));
+        iotjs_jval_set_property_jval(native_sources, natives[i].name,
+                                 *iotjs_jval_get_boolean(true));
   }
 }
 
 
-static void SetProcessEnv(iotjs_jval_t* process) {
+static void SetProcessEnv(iotjs_jval_t process) {
   const char *homedir, *iotjspath, *iotjsenv;
 
   homedir = getenv("HOME");
@@ -213,30 +213,30 @@ static void SetProcessEnv(iotjs_jval_t* process) {
 #endif
 
   iotjs_jval_t env = iotjs_jval_create_object();
-  iotjs_jval_set_property_string_raw(&env, IOTJS_MAGIC_STRING_HOME, homedir);
-  iotjs_jval_set_property_string_raw(&env, IOTJS_MAGIC_STRING_IOTJS_PATH,
+  iotjs_jval_set_property_string_raw(env, IOTJS_MAGIC_STRING_HOME, homedir);
+  iotjs_jval_set_property_string_raw(env, IOTJS_MAGIC_STRING_IOTJS_PATH,
                                      iotjspath);
-  iotjs_jval_set_property_string_raw(&env, IOTJS_MAGIC_STRING_IOTJS_ENV,
+  iotjs_jval_set_property_string_raw(env, IOTJS_MAGIC_STRING_IOTJS_ENV,
                                      iotjsenv);
 
-  iotjs_jval_set_property_jval(process, IOTJS_MAGIC_STRING_ENV, &env);
+  iotjs_jval_set_property_jval(process, IOTJS_MAGIC_STRING_ENV, env);
 
   iotjs_jval_destroy(&env);
 }
 
 
-static void SetProcessIotjs(iotjs_jval_t* process) {
+static void SetProcessIotjs(iotjs_jval_t process) {
   // IoT.js specific
   iotjs_jval_t iotjs = iotjs_jval_create_object();
-  iotjs_jval_set_property_jval(process, IOTJS_MAGIC_STRING_IOTJS, &iotjs);
+  iotjs_jval_set_property_jval(process, IOTJS_MAGIC_STRING_IOTJS, iotjs);
 
-  iotjs_jval_set_property_string_raw(&iotjs, IOTJS_MAGIC_STRING_BOARD,
+  iotjs_jval_set_property_string_raw(iotjs, IOTJS_MAGIC_STRING_BOARD,
                                      TOSTRING(TARGET_BOARD));
   iotjs_jval_destroy(&iotjs);
 }
 
 
-static void SetProcessArgv(iotjs_jval_t* process) {
+static void SetProcessArgv(iotjs_jval_t process) {
   const iotjs_environment_t* env = iotjs_environment_get();
   uint32_t argc = iotjs_environment_argc(env);
 
@@ -248,7 +248,7 @@ static void SetProcessArgv(iotjs_jval_t* process) {
     iotjs_jval_set_property_by_index(&argv, i, &arg);
     iotjs_jval_destroy(&arg);
   }
-  iotjs_jval_set_property_jval(process, IOTJS_MAGIC_STRING_ARGV, &argv);
+  iotjs_jval_set_property_jval(process, IOTJS_MAGIC_STRING_ARGV, argv);
 
   iotjs_jval_destroy(&argv);
 }
@@ -265,38 +265,38 @@ iotjs_jval_t InitProcess() {
   iotjs_jval_set_method(&process, IOTJS_MAGIC_STRING_CWD, Cwd);
   iotjs_jval_set_method(&process, IOTJS_MAGIC_STRING_CHDIR, Chdir);
   iotjs_jval_set_method(&process, IOTJS_MAGIC_STRING_DOEXIT, DoExit);
-  SetProcessEnv(&process);
+  SetProcessEnv(process);
 
   // process.native_sources
   iotjs_jval_t native_sources = iotjs_jval_create_object();
-  SetNativeSources(&native_sources);
-  iotjs_jval_set_property_jval(&process, IOTJS_MAGIC_STRING_NATIVE_SOURCES,
-                               &native_sources);
+  SetNativeSources(native_sources);
+  iotjs_jval_set_property_jval(process, IOTJS_MAGIC_STRING_NATIVE_SOURCES,
+                               native_sources);
   iotjs_jval_destroy(&native_sources);
 
   // process.platform
-  iotjs_jval_set_property_string_raw(&process, IOTJS_MAGIC_STRING_PLATFORM,
+  iotjs_jval_set_property_string_raw(process, IOTJS_MAGIC_STRING_PLATFORM,
                                      TARGET_OS);
 
   // process.arch
-  iotjs_jval_set_property_string_raw(&process, IOTJS_MAGIC_STRING_ARCH,
+  iotjs_jval_set_property_string_raw(process, IOTJS_MAGIC_STRING_ARCH,
                                      TARGET_ARCH);
 
   // process.version
-  iotjs_jval_set_property_string_raw(&process, IOTJS_MAGIC_STRING_VERSION,
+  iotjs_jval_set_property_string_raw(process, IOTJS_MAGIC_STRING_VERSION,
                                      IOTJS_VERSION);
 
   // Set iotjs
-  SetProcessIotjs(&process);
+  SetProcessIotjs(process);
 
-  SetProcessArgv(&process);
+  SetProcessArgv(process);
 
   // Binding module id.
   iotjs_jval_t jbinding =
       iotjs_jval_get_property(&process, IOTJS_MAGIC_STRING_BINDING);
 
 #define ENUMDEF_MODULE_LIST(upper, Camel, lower) \
-  iotjs_jval_set_property_number(&jbinding, #lower, MODULE_##upper);
+  iotjs_jval_set_property_number(jbinding, #lower, MODULE_##upper);
 
   MAP_MODULE_LIST(ENUMDEF_MODULE_LIST)
 
