@@ -125,7 +125,7 @@ void iotjs_jval_set_property_string(THIS_JVAL, const char* name,
 void iotjs_jval_set_property_string_raw(THIS_JVAL, const char* name,
                                         const char* v);
 
-iotjs_jval_t iotjs_jval_get_property(THIS_JVAL, const char* name);
+iotjs_jval_t iotjs_jval_get_property(iotjs_jval_t jobj, const char* name);
 
 void iotjs_jval_set_object_native_handle(THIS_JVAL, uintptr_t ptr,
                                          JNativeInfoType* native_info);
