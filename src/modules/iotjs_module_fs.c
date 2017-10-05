@@ -308,7 +308,7 @@ JHANDLER_FUNCTION(Write) {
 
 
 iotjs_jval_t MakeStatObject(uv_stat_t* statbuf) {
-  const iotjs_jval_t* fs = iotjs_module_get(MODULE_FS);
+  iotjs_jval_t fs = *iotjs_module_get(MODULE_FS);
 
   iotjs_jval_t stat_prototype =
       iotjs_jval_get_property(fs, IOTJS_MAGIC_STRING_STATS);
@@ -483,7 +483,7 @@ JHANDLER_FUNCTION(ReadDir) {
 static void StatsIsTypeOf(iotjs_jhandler_t* jhandler, int type) {
   DJHANDLER_CHECK_THIS(object);
   const iotjs_jval_t stats = JHANDLER_GET_THIS(object);
-  iotjs_jval_t mode = iotjs_jval_get_property(&stats, IOTJS_MAGIC_STRING_MODE);
+  iotjs_jval_t mode = iotjs_jval_get_property(stats, IOTJS_MAGIC_STRING_MODE);
 
   int mode_number = (int)iotjs_jval_as_number(mode);
 
