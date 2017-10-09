@@ -34,7 +34,7 @@ BUILDTYPES=['debug', 'release']
 NUTTXTAG = 'nuttx-7.19'
 
 TIZENRT_REPO='https://github.com/tadziopazur/TizenRT.git'
-TIZENRT_REVISION='IOTJS_20170920'
+TIZENRT_REVISION='IOTJS_20171006'
 TIZNERT_BUILD_BRANCH='iotjs_build'
 
 def get_config():
