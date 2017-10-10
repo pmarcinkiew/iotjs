@@ -31,11 +31,14 @@ TESTS=['host-linux', 'host-darwin', 'rpi2', 'nuttx', 'misc', 'no-snapshot',
        'artik10', 'artik053', 'coverity']
 ROMFS_MODULES=['tests']
 BUILDTYPES=['debug', 'release']
-NUTTXTAG = 'nuttx-7.19'
 
 TIZENRT_REPO='https://github.com/tadziopazur/TizenRT.git'
 TIZENRT_REVISION='IOTJS_20170920'
 TIZNERT_BUILD_BRANCH='iotjs_build'
+
+NUTTX_OS_REPO='https://bitbucket.org/nuttx/nuttx.git'
+NUTTX_APP_REPO='https://bitbucket.org/nuttx/apps.git'
+NUTTXTAG = 'nuttx-7.19'
 
 def get_config():
     config_path = path.BUILD_MODULE_CONFIG_PATH
@@ -69,15 +72,13 @@ def setup_nuttx_root(nuttx_root):
     fs.maybe_make_directory(nuttx_root)
     fs.chdir(nuttx_root)
     if not fs.exists('nuttx'):
-        ex.check_run_cmd('git', ['clone',
-                                 'https://bitbucket.org/nuttx/nuttx.git'])
+        ex.check_run_cmd('git', ['clone', NUTTX_OS_REPO])
     fs.chdir('nuttx')
     ex.check_run_cmd('git', ['checkout', NUTTXTAG])
     fs.chdir('..')
 
     if not fs.exists('apps'):
-        ex.check_run_cmd('git', ['clone',
-                                 'https://bitbucket.org/nuttx/apps.git'])
+        ex.check_run_cmd('git', ['clone', NUTTX_APP_REPO])
     fs.chdir('apps')
     ex.check_run_cmd('git', ['checkout', NUTTXTAG])
     fs.chdir('..')
