@@ -25,8 +25,8 @@ JHANDLER_FUNCTION(Binding) {
 
   ModuleKind module_kind = (ModuleKind)JHANDLER_GET_ARG(0, number);
 
-  const iotjs_jval_t* jmodule =
-      iotjs_module_initialize_if_necessary(module_kind);
+  iotjs_jval_t jmodule =
+      *iotjs_module_initialize_if_necessary(module_kind);
 
   iotjs_jhandler_return_jval(jhandler, jmodule);
 }
@@ -65,14 +65,14 @@ JHANDLER_FUNCTION(Compile) {
                iotjs_string_size(&source), &throws);
 
   if (!throws) {
-    iotjs_jhandler_return_jval(jhandler, &jres);
+    iotjs_jhandler_return_jval(jhandler, jres);
   } else {
     iotjs_jhandler_throw(jhandler, jres);
   }
 
   iotjs_string_destroy(&file);
   iotjs_string_destroy(&source);
-  iotjs_jval_destroy(&jres);
+  jerry_release_value(jres);
 }
 
 
@@ -92,12 +92,12 @@ static jerry_value_t wait_for_source_callback(
                iotjs_string_size(&source), &throws);
 
   if (!throws) {
-    iotjs_jhandler_return_jval(jhandler, &jres);
+    iotjs_jhandler_return_jval(jhandler, jres);
   } else {
     iotjs_jhandler_throw(jhandler, jres);
   }
 
-  iotjs_jval_destroy(&jres);
+  jerry_release_value(jres);
   return jerry_create_undefined();
 }
 
@@ -138,15 +138,15 @@ JHANDLER_FUNCTION(CompileNativePtr) {
 #endif
 
     if (!throws) {
-      iotjs_jhandler_return_jval(jhandler, &jres);
+      iotjs_jhandler_return_jval(jhandler, jres);
     } else {
       iotjs_jhandler_throw(jhandler, jres);
     }
-    iotjs_jval_destroy(&jres);
+    jerry_release_value(jres);
   } else {
     iotjs_jval_t jerror = iotjs_jval_create_error("Unknown native module");
     iotjs_jhandler_throw(jhandler, jerror);
-    iotjs_jval_destroy(&jerror);
+    jerry_release_value(jerror);
   }
 
   iotjs_string_destroy(&id);
@@ -248,7 +248,7 @@ static void SetProcessEnv(iotjs_jval_t process) {
 
   iotjs_jval_set_property_jval(process, IOTJS_MAGIC_STRING_ENV, env);
 
-  iotjs_jval_destroy(&env);
+  jerry_release_value(env);
 }
 
 
@@ -259,7 +259,7 @@ static void SetProcessIotjs(iotjs_jval_t process) {
 
   iotjs_jval_set_property_string_raw(iotjs, IOTJS_MAGIC_STRING_BOARD,
                                      TOSTRING(TARGET_BOARD));
-  iotjs_jval_destroy(&iotjs);
+  jerry_release_value(iotjs);
 }
 
 
@@ -273,11 +273,11 @@ static void SetProcessArgv(iotjs_jval_t process) {
     const char* argvi = iotjs_environment_argv(env, i);
     iotjs_jval_t arg = iotjs_jval_create_string_raw(argvi);
     iotjs_jval_set_property_by_index(argv, i, arg);
-    iotjs_jval_destroy(&arg);
+    jerry_release_value(arg);
   }
   iotjs_jval_set_property_jval(process, IOTJS_MAGIC_STRING_ARGV, argv);
 
-  iotjs_jval_destroy(&argv);
+  jerry_release_value(argv);
 }
 
 
@@ -301,7 +301,7 @@ iotjs_jval_t InitProcess() {
   SetNativeSources(native_sources);
   iotjs_jval_set_property_jval(process, IOTJS_MAGIC_STRING_NATIVE_SOURCES,
                                native_sources);
-  iotjs_jval_destroy(&native_sources);
+  jerry_release_value(native_sources);
 
   // process.platform
   iotjs_jval_set_property_string_raw(process, IOTJS_MAGIC_STRING_PLATFORM,
@@ -340,8 +340,8 @@ iotjs_jval_t InitProcess() {
 
 #undef ENUMDEF_MODULE_LIST
 
-  iotjs_jval_destroy(&wait_source_val);
-  iotjs_jval_destroy(&jbinding);
+  jerry_release_value(wait_source_val);
+  jerry_release_value(jbinding);
 
   return process;
 }
