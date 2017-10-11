@@ -208,7 +208,7 @@ iotjs_jval_t InitBlehcisocket() {
   iotjs_jval_set_property_jval(jblehcisocketCons, IOTJS_MAGIC_STRING_PROTOTYPE,
                                prototype);
 
-  iotjs_jval_destroy(&prototype);
+  jerry_release_value(prototype);
 
   return jblehcisocketCons;
 }

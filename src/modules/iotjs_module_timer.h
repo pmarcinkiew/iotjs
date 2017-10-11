@@ -28,7 +28,7 @@ typedef struct {
 
 iotjs_timerwrap_t* iotjs_timerwrap_create(const iotjs_jval_t jtimer);
 
-iotjs_timerwrap_t* iotjs_timerwrap_from_jobject(const iotjs_jval_t* jtimer);
+iotjs_timerwrap_t* iotjs_timerwrap_from_jobject(const iotjs_jval_t jtimer);
 iotjs_timerwrap_t* iotjs_timerwrap_from_handle(uv_timer_t* timer_handle);
 
 uv_timer_t* iotjs_timerwrap_handle(iotjs_timerwrap_t* timerwrap);

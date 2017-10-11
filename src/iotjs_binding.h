@@ -87,8 +87,6 @@ iotjs_jval_t* iotjs_jval_get_null();
 iotjs_jval_t* iotjs_jval_get_boolean(bool v);
 iotjs_jval_t iotjs_jval_get_global_object();
 
-/* Destructor */
-void iotjs_jval_destroy(iotjs_jval_t* jval);
 
 /* Type Checkers */
 bool iotjs_jval_is_undefined(iotjs_jval_t);
@@ -197,7 +195,7 @@ iotjs_jval_t iotjs_jhandler_get_arg(iotjs_jhandler_t* jhandler, uint16_t index);
 uint16_t iotjs_jhandler_get_arg_length(iotjs_jhandler_t* jhandler);
 
 void iotjs_jhandler_return_jval(iotjs_jhandler_t* jhandler,
-                                const iotjs_jval_t* ret);
+                                iotjs_jval_t ret);
 void iotjs_jhandler_return_undefined(iotjs_jhandler_t* jhandler);
 void iotjs_jhandler_return_null(iotjs_jhandler_t* jhandler);
 void iotjs_jhandler_return_boolean(iotjs_jhandler_t* jhandler, bool x);
@@ -217,7 +215,7 @@ iotjs_jval_t iotjs_jval_create_function_with_dispatch(
 #define JHANDLER_THROW(TYPE, message)                                         \
   iotjs_jval_t e = iotjs_jval_create_error_type(IOTJS_ERROR_##TYPE, message); \
   iotjs_jhandler_throw(jhandler, e);                                          \
-  iotjs_jval_destroy(&e);
+  jerry_release_value(e);
 
 #define JHANDLER_CHECK(predicate)             \
   if (!(predicate)) {                         \
@@ -326,7 +324,7 @@ static inline bool ge(uint16_t a, uint16_t b) {
                      "Bad arguments, required " property " is not a " #type); \
       return;                                                                 \
     }                                                                         \
-    iotjs_jval_destroy(&jtmp);                                                \
+    jerry_release_value(jtmp);                                                \
   } while (0);
 
 void iotjs_binding_initialize();
