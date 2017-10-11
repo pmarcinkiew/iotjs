@@ -86,6 +86,8 @@ Driver.prototype.config = function() {
     "a flag that indicates if tests for experimental are needed");
   parser.addOption('default-timeout', "", 240,
     "the default timeout in seconds");
+	parser.addOption('test-sets', "", "all",
+		"A list of comma separated test sets to run");
 
   var options = parser.parse();
 
@@ -115,6 +117,8 @@ Driver.prototype.config = function() {
     this.stability = 'experimental';
   }
 
+	var specifiedTestSets = options['test-sets'].split(',');
+
   this.logger = new Logger(path);
 
   this.options = options;
@@ -122,7 +126,17 @@ Driver.prototype.config = function() {
   var testfile = util.join(this.root, 'testsets.json');
   var testsets = fs.readFileSync(testfile).toString();
 
-  this.tests = JSON.parse(testsets);
+  var tests = JSON.parse(testsets);
+	var resultTests = {};
+	if (specifiedTestSets.indexOf('all') > -1) {
+		resultTests = tests;
+	} else {
+		specifiedTestSets.forEach(function (test) {
+			if (tests[test] !== undefined) {
+				resultTests[test] = tests[test];
+			}
+		});
+	}
 
   this.dIdx = 0;
   this.dLength = Object.keys(this.tests).length;
