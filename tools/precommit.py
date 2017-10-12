@@ -55,15 +55,16 @@ def parse_option():
     parser.add_argument('--buildtype', choices=BUILDTYPES, action='append')
     parser.add_argument('--buildoptions', action='store', default='',
                         help='A comma separated list of extra buildoptions')
-    parser.add_argument('--romfs', choices=ROMFS_MODULES, action='append')
+    parser.add_argument('--skipbuild', choices=[True, False], action='store',
+                        nargs='?', const=True, default=False)
+    parser.add_argument('--romfs', choices=ROMFS_MODULES, action='append',
+                        default=[])
 
     option = parser.parse_args(sys.argv[1:])
     if option.test is None:
         option.test = TESTS
     if option.buildtype is None:
         option.buildtype = BUILDTYPES
-    if option.romfs is None:
-        option.romfs = []
     return option
 
 
@@ -277,19 +278,20 @@ if __name__ == '__main__':
 
         elif test == "artik053":
             tizenrt_root = fs.join(path.PROJECT_ROOT, 'deps', 'tizenrt')
-            for buildtype in option.buildtype:
-                setup_tizenrt_repo(tizenrt_root)
-                configure_trizenrt(tizenrt_root, buildtype)
-                build(buildtype, ['--target-arch=arm',
-                                '--target-os=tizenrt',
-                                '--target-board=artik05x',
-                                '--sysroot=' + tizenrt_root + '/os',
-                                '--jerry-heaplimit=128',
-                                '--clean',
-                                ] + os_dependency_module['tizenrt']
-                                + build_args)
-                build_tizenrt(tizenrt_root, path.PROJECT_ROOT, buildtype)
-                fs.chdir(path.PROJECT_ROOT)
+            if not option.skipbuild:
+                for buildtype in option.buildtype:
+                    setup_tizenrt_repo(tizenrt_root)
+                    configure_trizenrt(tizenrt_root, buildtype)
+                    build(buildtype, ['--target-arch=arm',
+                                    '--target-os=tizenrt',
+                                    '--target-board=artik05x',
+                                    '--sysroot=' + tizenrt_root + '/os',
+                                    '--jerry-heaplimit=128',
+                                    '--clean',
+                                    ] + os_dependency_module['tizenrt']
+                                    + build_args)
+                    build_tizenrt(tizenrt_root, path.PROJECT_ROOT, buildtype)
+                    fs.chdir(path.PROJECT_ROOT)
             # For now only romfs=tests works
             if 'tests' in option.romfs:
                 rom_file = create_test_romfs()
