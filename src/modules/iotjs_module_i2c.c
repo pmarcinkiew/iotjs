@@ -66,9 +66,9 @@ uv_work_t* iotjs_i2c_reqwrap_req(THIS) {
   return &_this->req;
 }
 
-const iotjs_jval_t* iotjs_i2c_reqwrap_jcallback(THIS) {
+iotjs_jval_t iotjs_i2c_reqwrap_jcallback(THIS) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_i2c_reqwrap_t, i2c_reqwrap);
-  return iotjs_reqwrap_jcallback(&_this->reqwrap);
+  return *iotjs_reqwrap_jcallback(&_this->reqwrap);
 }
 
 iotjs_i2c_reqwrap_t* iotjs_i2c_reqwrap_from_request(uv_work_t* req) {
@@ -164,8 +164,8 @@ void AfterI2CWork(uv_work_t* work_req, int status) {
     }
   }
 
-  const iotjs_jval_t* jcallback = iotjs_i2c_reqwrap_jcallback(req_wrap);
-  iotjs_make_callback(jcallback, iotjs_jval_get_undefined(), &jargs);
+  const iotjs_jval_t jcallback = iotjs_i2c_reqwrap_jcallback(req_wrap);
+  iotjs_make_callback(jcallback, *iotjs_jval_get_undefined(), &jargs);
 
   iotjs_jargs_destroy(&jargs);
   iotjs_i2c_reqwrap_dispatched(req_wrap);

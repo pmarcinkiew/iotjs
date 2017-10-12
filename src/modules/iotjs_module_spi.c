@@ -85,9 +85,9 @@ static uv_work_t* iotjs_spi_reqwrap_req(THIS) {
 }
 
 
-static const iotjs_jval_t* iotjs_spi_reqwrap_jcallback(THIS) {
+static iotjs_jval_t iotjs_spi_reqwrap_jcallback(THIS) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_spi_reqwrap_t, spi_reqwrap);
-  return iotjs_reqwrap_jcallback(&_this->reqwrap);
+  return *iotjs_reqwrap_jcallback(&_this->reqwrap);
 }
 
 
@@ -300,8 +300,8 @@ static void iotjs_spi_after_work(uv_work_t* work_req, int status) {
     }
   }
 
-  const iotjs_jval_t* jcallback = iotjs_spi_reqwrap_jcallback(req_wrap);
-  iotjs_make_callback(jcallback, iotjs_jval_get_undefined(), &jargs);
+  iotjs_jval_t jcallback = iotjs_spi_reqwrap_jcallback(req_wrap);
+  iotjs_make_callback(jcallback, *iotjs_jval_get_undefined(), &jargs);
 
   iotjs_jargs_destroy(&jargs);
 
