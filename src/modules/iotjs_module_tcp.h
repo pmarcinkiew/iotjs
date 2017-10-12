@@ -67,7 +67,7 @@ typedef struct {
 iotjs_write_reqwrap_t* iotjs_write_reqwrap_create(iotjs_jval_t jcallback);
 void iotjs_write_reqwrap_dispatched(THIS);
 uv_write_t* iotjs_write_reqwrap_req(THIS);
-const iotjs_jval_t* iotjs_write_reqwrap_jcallback(THIS);
+iotjs_jval_t iotjs_write_reqwrap_jcallback(THIS);
 #undef THIS
 
 
