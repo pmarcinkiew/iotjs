@@ -20,10 +20,10 @@
 #include "iotjs_objectwrap.h"
 
 
-static iotjs_uart_t* iotjs_uart_instance_from_jval(const iotjs_jval_t* juart);
+static iotjs_uart_t* iotjs_uart_instance_from_jval(iotjs_jval_t juart);
 IOTJS_DEFINE_NATIVE_HANDLE_INFO_THIS_MODULE(uart);
 
-static iotjs_uart_t* iotjs_uart_create(const iotjs_jval_t* juart) {
+static iotjs_uart_t* iotjs_uart_create(iotjs_jval_t juart) {
   iotjs_uart_t* uart = IOTJS_ALLOC(iotjs_uart_t);
   IOTJS_VALIDATED_STRUCT_CONSTRUCTOR(iotjs_uart_t, uart);
 
@@ -85,7 +85,7 @@ static iotjs_jval_t iotjs_uart_reqwrap_jcallback(THIS) {
 }
 
 
-static iotjs_uart_t* iotjs_uart_instance_from_jval(const iotjs_jval_t* juart) {
+static iotjs_uart_t* iotjs_uart_instance_from_jval(iotjs_jval_t juart) {
   iotjs_handlewrap_t* handlewrap = iotjs_handlewrap_from_jobject(juart);
   return (iotjs_uart_t*)handlewrap;
 }
@@ -259,8 +259,8 @@ JHANDLER_FUNCTION(UartConstructor) {
 
   // Create UART object
   iotjs_jval_t juart = JHANDLER_GET_THIS(object);
-  iotjs_uart_t* uart = iotjs_uart_create(&juart);
-  IOTJS_ASSERT(uart == iotjs_uart_instance_from_jval(&juart));
+  iotjs_uart_t* uart = iotjs_uart_create(juart);
+  IOTJS_ASSERT(uart == iotjs_uart_instance_from_jval(juart));
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_uart_t, uart);
 
   iotjs_jval_t jconfiguration = JHANDLER_GET_ARG(0, object);
