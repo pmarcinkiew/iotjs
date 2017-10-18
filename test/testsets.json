@@ -60,7 +60,7 @@
     { "name": "test_net_4.js" },
     { "name": "test_net_5.js" },
     { "name": "test_net_6.js" },
-    { "name": "test_net_7.js", "skip": ["nuttx", "tizenrt"], "reason": "requires too many socket descriptors" },
+    { "name": "test_net_7.js", "skip": ["nuttx"], "reason": "requires too many socket descriptors" },
     { "name": "test_net_8.js", "skip": ["linux"], "reason": "[linux]: flaky on Travis" },
     { "name": "test_net_9.js" },
     { "name": "test_net_10.js" },
