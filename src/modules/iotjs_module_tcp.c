@@ -81,8 +81,7 @@ iotjs_jval_t iotjs_tcpwrap_jobject(iotjs_tcpwrap_t* tcpwrap) {
 static void iotjs_connect_reqwrap_destroy(THIS);
 
 
-iotjs_connect_reqwrap_t* iotjs_connect_reqwrap_create(
-    const iotjs_jval_t* jcallback) {
+iotjs_connect_reqwrap_t* iotjs_connect_reqwrap_create(iotjs_jval_t jcallback) {
   iotjs_connect_reqwrap_t* connect_reqwrap =
       IOTJS_ALLOC(iotjs_connect_reqwrap_t);
   IOTJS_VALIDATED_STRUCT_CONSTRUCTOR(iotjs_connect_reqwrap_t, connect_reqwrap);
@@ -113,7 +112,7 @@ uv_connect_t* iotjs_connect_reqwrap_req(THIS) {
 
 iotjs_jval_t iotjs_connect_reqwrap_jcallback(THIS) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_connect_reqwrap_t, connect_reqwrap);
-  return *iotjs_reqwrap_jcallback(&_this->reqwrap);
+  return iotjs_reqwrap_jcallback(&_this->reqwrap);
 }
 
 #undef THIS
@@ -138,7 +137,7 @@ static void iotjs_write_reqwrap_destroy(THIS);
 iotjs_write_reqwrap_t* iotjs_write_reqwrap_create(iotjs_jval_t jcallback) {
   iotjs_write_reqwrap_t* write_reqwrap = IOTJS_ALLOC(iotjs_write_reqwrap_t);
   IOTJS_VALIDATED_STRUCT_CONSTRUCTOR(iotjs_write_reqwrap_t, write_reqwrap);
-  iotjs_reqwrap_initialize(&_this->reqwrap, &jcallback, (uv_req_t*)&_this->req);
+  iotjs_reqwrap_initialize(&_this->reqwrap, jcallback, (uv_req_t*)&_this->req);
   return write_reqwrap;
 }
 
@@ -165,7 +164,7 @@ uv_write_t* iotjs_write_reqwrap_req(THIS) {
 
 iotjs_jval_t iotjs_write_reqwrap_jcallback(THIS) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_write_reqwrap_t, write_reqwrap);
-  return *iotjs_reqwrap_jcallback(&_this->reqwrap);
+  return iotjs_reqwrap_jcallback(&_this->reqwrap);
 }
 
 #undef THIS
@@ -183,7 +182,7 @@ iotjs_shutdown_reqwrap_t* iotjs_shutdown_reqwrap_create(
       IOTJS_ALLOC(iotjs_shutdown_reqwrap_t);
   IOTJS_VALIDATED_STRUCT_CONSTRUCTOR(iotjs_shutdown_reqwrap_t,
                                      shutdown_reqwrap);
-  iotjs_reqwrap_initialize(&_this->reqwrap, &jcallback, (uv_req_t*)&_this->req);
+  iotjs_reqwrap_initialize(&_this->reqwrap, jcallback, (uv_req_t*)&_this->req);
   return shutdown_reqwrap;
 }
 
@@ -210,7 +209,7 @@ uv_shutdown_t* iotjs_shutdown_reqwrap_req(THIS) {
 
 iotjs_jval_t iotjs_shutdown_reqwrap_jcallback(THIS) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_shutdown_reqwrap_t, shutdown_reqwrap);
-  return *iotjs_reqwrap_jcallback(&_this->reqwrap);
+  return iotjs_reqwrap_jcallback(&_this->reqwrap);
 }
 
 #undef THIS
@@ -327,7 +326,7 @@ JHANDLER_FUNCTION(Connect) {
 
   if (err == 0) {
     // Create connection request wrapper.
-    iotjs_connect_reqwrap_t* req_wrap = iotjs_connect_reqwrap_create(&jcallback);
+    iotjs_connect_reqwrap_t* req_wrap = iotjs_connect_reqwrap_create(jcallback);
 
     // Create connection request.
     err = uv_tcp_connect(iotjs_connect_reqwrap_req(req_wrap),
