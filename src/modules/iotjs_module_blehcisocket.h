@@ -59,8 +59,7 @@ typedef struct {
 
 
 iotjs_blehcisocket_t* iotjs_blehcisocket_create(iotjs_jval_t jble);
-iotjs_blehcisocket_t* iotjs_blehcisocket_instance_from_jval(
-    const iotjs_jval_t* jble);
+iotjs_blehcisocket_t* iotjs_blehcisocket_instance_from_jval(iotjs_jval_t jble);
 
 
 void iotjs_blehcisocket_initialize(THIS);

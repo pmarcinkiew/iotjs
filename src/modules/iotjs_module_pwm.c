@@ -22,7 +22,7 @@ static iotjs_pwm_t* iotjs_pwm_instance_from_jval(iotjs_jval_t jpwm);
 IOTJS_DEFINE_NATIVE_HANDLE_INFO_THIS_MODULE(pwm);
 
 
-static iotjs_pwm_t* iotjs_pwm_create(const iotjs_jval_t* jpwm) {
+static iotjs_pwm_t* iotjs_pwm_create(iotjs_jval_t jpwm) {
   iotjs_pwm_t* pwm = IOTJS_ALLOC(iotjs_pwm_t);
   IOTJS_VALIDATED_STRUCT_CONSTRUCTOR(iotjs_pwm_t, pwm);
   iotjs_jobjectwrap_initialize(&_this->jobjectwrap, jpwm,
@@ -50,8 +50,9 @@ static void iotjs_pwm_destroy(iotjs_pwm_t* pwm) {
 #define THIS iotjs_pwm_reqwrap_t* pwm_reqwrap
 
 
-static iotjs_pwm_reqwrap_t* iotjs_pwm_reqwrap_create(
-    const iotjs_jval_t* jcallback, iotjs_pwm_t* pwm, PwmOp op) {
+static iotjs_pwm_reqwrap_t* iotjs_pwm_reqwrap_create(iotjs_jval_t jcallback,
+                                                     iotjs_pwm_t* pwm,
+                                                     PwmOp op) {
   iotjs_pwm_reqwrap_t* pwm_reqwrap = IOTJS_ALLOC(iotjs_pwm_reqwrap_t);
   IOTJS_VALIDATED_STRUCT_CONSTRUCTOR(iotjs_pwm_reqwrap_t, pwm_reqwrap);
 
@@ -86,7 +87,7 @@ static uv_work_t* iotjs_pwm_reqwrap_req(THIS) {
 
 static iotjs_jval_t iotjs_pwm_reqwrap_jcallback(THIS) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_pwm_reqwrap_t, pwm_reqwrap);
-  return *iotjs_reqwrap_jcallback(&_this->reqwrap);
+  return iotjs_reqwrap_jcallback(&_this->reqwrap);
 }
 
 
@@ -252,7 +253,7 @@ JHANDLER_FUNCTION(PWMConstructor) {
 
   // Create PWM object
   iotjs_jval_t jpwm = JHANDLER_GET_THIS(object);
-  iotjs_pwm_t* pwm = iotjs_pwm_create(&jpwm);
+  iotjs_pwm_t* pwm = iotjs_pwm_create(jpwm);
   IOTJS_ASSERT(pwm == iotjs_pwm_instance_from_jval(jpwm));
 
   iotjs_jval_t jconfiguration = JHANDLER_GET_ARG(0, object);
@@ -261,7 +262,7 @@ JHANDLER_FUNCTION(PWMConstructor) {
   // Set configuration
   iotjs_pwm_set_configuration(jconfiguration, pwm);
 
-  PWM_ASYNC(open, pwm, &jcallback, kPwmOpOpen);
+  PWM_ASYNC(open, pwm, jcallback, kPwmOpOpen);
 }
 
 
@@ -277,7 +278,7 @@ JHANDLER_FUNCTION(SetPeriod) {
   _this->period = JHANDLER_GET_ARG(0, number);
 
   if (!jerry_value_is_null(jcallback)) {
-    PWM_ASYNC_COMMON_WORKER(iotjs_pwm_set_period, pwm, &jcallback,
+    PWM_ASYNC_COMMON_WORKER(iotjs_pwm_set_period, pwm, jcallback,
                             kPwmOpSetPeriod);
   } else {
     if (!iotjs_pwm_set_period(pwm)) {
@@ -301,7 +302,7 @@ JHANDLER_FUNCTION(SetDutyCycle) {
   _this->duty_cycle = JHANDLER_GET_ARG(0, number);
 
   if (!jerry_value_is_null(jcallback)) {
-    PWM_ASYNC_COMMON_WORKER(iotjs_pwm_set_dutycycle, pwm, &jcallback,
+    PWM_ASYNC_COMMON_WORKER(iotjs_pwm_set_dutycycle, pwm, jcallback,
                             kPwmOpSetDutyCycle);
   } else {
     if (!iotjs_pwm_set_dutycycle(pwm)) {
@@ -325,7 +326,7 @@ JHANDLER_FUNCTION(SetEnable) {
   _this->enable = JHANDLER_GET_ARG(0, boolean);
 
   if (!jerry_value_is_null(jcallback)) {
-    PWM_ASYNC_COMMON_WORKER(iotjs_pwm_set_enable, pwm, &jcallback,
+    PWM_ASYNC_COMMON_WORKER(iotjs_pwm_set_enable, pwm, jcallback,
                             kPwmOpSetEnable);
   } else {
     if (!iotjs_pwm_set_enable(pwm)) {
@@ -344,7 +345,7 @@ JHANDLER_FUNCTION(Close) {
   const iotjs_jval_t jcallback = JHANDLER_GET_ARG_IF_EXIST(0, function);
 
   if (!jerry_value_is_null(jcallback)) {
-    PWM_ASYNC_COMMON_WORKER(iotjs_pwm_close, pwm, &jcallback, kPwmOpClose);
+    PWM_ASYNC_COMMON_WORKER(iotjs_pwm_close, pwm, jcallback, kPwmOpClose);
   } else {
     if (!iotjs_pwm_close(pwm)) {
       JHANDLER_THROW(COMMON, "PWM Close Error");

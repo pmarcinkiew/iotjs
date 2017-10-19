@@ -50,8 +50,7 @@ typedef struct {
 } IOTJS_VALIDATED_STRUCT(iotjs_connect_reqwrap_t);
 
 #define THIS iotjs_connect_reqwrap_t* connect_reqwrap
-iotjs_connect_reqwrap_t* iotjs_connect_reqwrap_create(
-    const iotjs_jval_t* jcallback);
+iotjs_connect_reqwrap_t* iotjs_connect_reqwrap_create(iotjs_jval_t jcallback);
 void iotjs_connect_reqwrap_dispatched(THIS);
 uv_connect_t* iotjs_connect_reqwrap_req(THIS);
 iotjs_jval_t iotjs_connect_reqwrap_jcallback(THIS);
