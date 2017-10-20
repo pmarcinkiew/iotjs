@@ -326,12 +326,6 @@ if __name__ == '__main__':
                 args = ['--travis']
             ex.check_run_cmd('tools/check_signed_off.sh', args)
 
-            if not check_tidy(path.PROJECT_ROOT):
-                ex.fail("Failed tidy check")
-
-            build("debug", build_args)
-            build("debug", ['--iotjs-minimal-profile'] + build_args)
-
         elif test == "no-snapshot":
             args = []
             if os.getenv('TRAVIS') != None:
