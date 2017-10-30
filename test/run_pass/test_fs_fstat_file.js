@@ -14,7 +14,6 @@
  */
 
 var assert = require('assert');
-var console = require('console');
 var fs = require('fs');
 
 var testfile = process.cwd() + "/run_pass/test_fs_fstat_file.js";
@@ -22,31 +21,23 @@ var flags = "r";
 
 
 // fstat - file
-console.warn('Opening file ' + testfile)
 fs.open(testfile, flags, function(err, fd) {
   if (err) {
-    console.warn('file open failed, ' + err.message);
     throw err;
   }
 
-  console.warn('file open OK, fstat\'ing');
   fs.fstat(fd, function(err, stat) {
     if (err) {
-      console.warn('file fstat failed, ' + err.message);
       throw err;
     }
 
-    console.warn('verifying file fstat results');
     assert.equal(stat.isFile(), true);
     assert.equal(stat.isDirectory(), false);
 
-    console.warn('closing file');
     fs.close(fd, function(err) {
       if (err) {
-      console.warn('file close failed, ' + err.message);
         throw err;
       }
     });
   });
 });
-console.warn('File fstat test passed')

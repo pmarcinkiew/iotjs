@@ -14,33 +14,25 @@
  */
 
 var assert = require('assert');
-var console = require('console');
 var fs = require('fs');
 
 var testdir = process.cwd() + "/resources";
 var flags = "r";
 
-console.warn('Opening directory ' + testdir)
 // fstat - directory
 fs.open(testdir, flags, function(err, fd) {
   if (err) {
-    console.warn('dir open failed, ' + err.message);
     throw err;
   }
-  console.warn('dir open OK, fstat\'ing');
   fs.fstat(fd, function(err, stat) {
     if (err) {
-      console.warn('dir fstat failed, ' + err.message);
       throw err;
     }
-    console.warn('verifying dir fstat results');
     assert.equal(stat.isFile(), false);
     assert.equal(stat.isDirectory(), true);
 
-    console.warn('closing directory');
     fs.close(fd, function(err) {
       if (err) {
-        console.warn('dir close failed, ' + err.message);
         throw err;
       }
     });
