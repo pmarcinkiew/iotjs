@@ -33,7 +33,7 @@ ROMFS_MODULES=['tests']
 BUILDTYPES=['debug', 'release']
 
 TIZENRT_REPO='https://github.com/tadziopazur/TizenRT.git'
-TIZENRT_REVISION='IOTJS_20171019'
+TIZENRT_REVISION='IOTJS_20171030'
 TIZNERT_BUILD_BRANCH='iotjs_build'
 
 NUTTX_OS_REPO='https://bitbucket.org/nuttx/nuttx.git'
