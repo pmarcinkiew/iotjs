@@ -79,12 +79,14 @@ iotjs_jval_t* iotjs_udpwrap_jobject(iotjs_udpwrap_t* udpwrap) {
 #define THIS iotjs_send_reqwrap_t* send_reqwrap
 
 iotjs_send_reqwrap_t* iotjs_send_reqwrap_create(const iotjs_jval_t* jcallback,
+                                                void* req_data,
                                                 const size_t msg_size) {
   iotjs_send_reqwrap_t* send_reqwrap = IOTJS_ALLOC(iotjs_send_reqwrap_t);
   IOTJS_VALIDATED_STRUCT_CONSTRUCTOR(iotjs_send_reqwrap_t, send_reqwrap);
 
   iotjs_reqwrap_initialize(&_this->reqwrap, jcallback, (uv_req_t*)&_this->req);
   _this->msg_size = msg_size;
+  _this->req_data = req_data;
 
   return send_reqwrap;
 }
@@ -92,6 +94,7 @@ iotjs_send_reqwrap_t* iotjs_send_reqwrap_create(const iotjs_jval_t* jcallback,
 
 static void iotjs_send_reqwrap_destroy(THIS) {
   IOTJS_VALIDATED_STRUCT_DESTRUCTOR(iotjs_send_reqwrap_t, send_reqwrap);
+  iotjs_buffer_release(_this->req_data);
   iotjs_reqwrap_destroy(&_this->reqwrap);
   IOTJS_RELEASE(send_reqwrap);
 }
@@ -132,12 +135,13 @@ JHANDLER_FUNCTION(UDP) {
   IOTJS_UNUSED(udp_wrap);
 }
 
-
 JHANDLER_FUNCTION(Bind) {
   JHANDLER_DECLARE_THIS_PTR(udpwrap, udp_wrap);
   DJHANDLER_CHECK_ARGS(2, string, number);
 
-  iotjs_string_t address = JHANDLER_GET_ARG(0, string);
+  iotjs_string_t option_address = JHANDLER_GET_ARG(0, string);
+  iotjs_string_t address = iotjs_create_ip(&option_address);
+
   const int port = JHANDLER_GET_ARG(1, number);
   const iotjs_jval_t* this_obj = JHANDLER_GET_THIS(object);
   iotjs_jval_t reuse_addr =
@@ -162,6 +166,7 @@ JHANDLER_FUNCTION(Bind) {
   iotjs_jhandler_return_number(jhandler, err);
 
   iotjs_jval_destroy(&reuse_addr);
+  iotjs_string_destroy(&option_address);
   iotjs_string_destroy(&address);
 }
 
@@ -289,17 +294,22 @@ JHANDLER_FUNCTION(Send) {
 
   const iotjs_jval_t* jbuffer = JHANDLER_GET_ARG(0, object);
   const unsigned short port = JHANDLER_GET_ARG(1, number);
-  iotjs_string_t address = JHANDLER_GET_ARG(2, string);
+  iotjs_string_t option_address = JHANDLER_GET_ARG(2, string);
+  iotjs_string_t address = iotjs_create_ip(&option_address);
   const iotjs_jval_t* jcallback = JHANDLER_GET_ARG(3, object);
 
   iotjs_bufferwrap_t* buffer_wrap = iotjs_bufferwrap_from_jbuffer(jbuffer);
   char* buffer = iotjs_bufferwrap_buffer(buffer_wrap);
   size_t len = iotjs_bufferwrap_length(buffer_wrap);
 
-  iotjs_send_reqwrap_t* req_wrap = iotjs_send_reqwrap_create(jcallback, len);
+  void* req_data = iotjs_buffer_allocate(len);
+  memcpy(req_data, buffer, len);
+
+  iotjs_send_reqwrap_t* req_wrap =
+      iotjs_send_reqwrap_create(jcallback, req_data, len);
 
   uv_buf_t buf;
-  buf.base = buffer;
+  buf.base = req_data;
   buf.len = len;
 
   char addr[sizeof(sockaddr_in6)];
@@ -318,6 +328,7 @@ JHANDLER_FUNCTION(Send) {
 
   iotjs_jhandler_return_number(jhandler, err);
 
+  iotjs_string_destroy(&option_address);
   iotjs_string_destroy(&address);
 }
 
@@ -372,7 +383,7 @@ JHANDLER_FUNCTION(SetTTL) {
 
 
 JHANDLER_FUNCTION(SetMulticastTTL) {
-#if !defined(__NUTTX__) && !defined(__TIZENRT__)
+#if !defined(__NUTTX__)
   IOTJS_UV_SET_SOCKOPT(uv_udp_set_multicast_ttl);
 #else
   IOTJS_ASSERT(!"Not implemented");
@@ -383,7 +394,7 @@ JHANDLER_FUNCTION(SetMulticastTTL) {
 
 
 JHANDLER_FUNCTION(SetMulticastLoopback) {
-#if !defined(__NUTTX__) && !defined(__TIZENRT__)
+#if !defined(__NUTTX__)
   IOTJS_UV_SET_SOCKOPT(uv_udp_set_multicast_loop);
 #else
   IOTJS_ASSERT(!"Not implemented");
@@ -396,11 +407,12 @@ JHANDLER_FUNCTION(SetMulticastLoopback) {
 
 
 void SetMembership(iotjs_jhandler_t* jhandler, uv_membership membership) {
-#if !defined(__NUTTX__) && !defined(__TIZENRT__)
+#if !defined(__NUTTX__)
   JHANDLER_DECLARE_THIS_PTR(udpwrap, udp_wrap);
   DJHANDLER_CHECK_ARGS(1, string);
 
-  iotjs_string_t address = JHANDLER_GET_ARG(0, string);
+  iotjs_string_t option_address = JHANDLER_GET_ARG(0, string);
+  iotjs_string_t address = iotjs_create_ip(&option_address);
   const iotjs_jval_t* arg1 = iotjs_jhandler_get_arg(jhandler, 1);
   bool isUndefinedOrNull =
       iotjs_jval_is_undefined(arg1) || iotjs_jval_is_null(arg1);
@@ -420,6 +432,7 @@ void SetMembership(iotjs_jhandler_t* jhandler, uv_membership membership) {
 
   iotjs_jhandler_return_number(jhandler, err);
 
+  iotjs_string_destroy(&option_address);
   iotjs_string_destroy(&address);
   if (!isUndefinedOrNull)
     iotjs_string_destroy(&iface);

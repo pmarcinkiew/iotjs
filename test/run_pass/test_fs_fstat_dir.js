@@ -13,34 +13,11 @@
  * limitations under the License.
  */
 
-var fs = require('fs');
 var assert = require('assert');
+var fs = require('fs');
 
-var testfile = process.cwd() + "/run_pass/test_fs_fstat.js";
 var testdir = process.cwd() + "/resources";
 var flags = "r";
-
-
-// fstat - file
-fs.open(testfile, flags, function(err, fd) {
-  if (err) {
-    throw err;
-  }
-  fs.fstat(fd, function(err, stat) {
-    if (err) {
-      throw err;
-    }
-    assert.equal(stat.isFile(), true);
-    assert.equal(stat.isDirectory(), false);
-
-    fs.close(fd, function(err) {
-      if (err) {
-        throw err;
-      }
-    });
-  });
-});
-
 
 // fstat - directory
 fs.open(testdir, flags, function(err, fd) {

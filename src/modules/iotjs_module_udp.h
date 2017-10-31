@@ -42,11 +42,13 @@ typedef struct {
   iotjs_reqwrap_t reqwrap;
   uv_udp_send_t req;
   size_t msg_size;
+  void* req_data;
 } IOTJS_VALIDATED_STRUCT(iotjs_send_reqwrap_t);
 
 #define THIS iotjs_send_reqwrap_t* send_reqwrap
 
 iotjs_send_reqwrap_t* iotjs_send_reqwrap_create(const iotjs_jval_t* jcallback,
+                                                void* req_data,
                                                 const size_t msg_size);
 
 void iotjs_send_reqwrap_dispatched(THIS);
