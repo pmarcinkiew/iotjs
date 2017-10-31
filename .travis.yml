@@ -25,5 +25,4 @@ env:
     - OPTS="--test=rpi2" INSTALL_ARM_DEPS=yes
     - OPTS="--test=nuttx" INSTALL_NUTTX_DEPS=yes
     - OPTS="--test=artik053" INSTALL_TIZENRT_DEPS=yes
-    - OPTS="--test=misc"
     - OPTS="--test=no-snapshot"
