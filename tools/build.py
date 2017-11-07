@@ -184,7 +184,7 @@ def init_options():
         help='Enable JerryScript heap statistics')
 
     parser.add_argument('--jerry-profile',
-        choices=['es5.1', 'es2015-subset'], default='es5.1',
+        choices=['es5.1', 'es2015-subset'], default='es2015-subset',
         help='Specify the profile for JerryScript: %(choices)s'
              ' (default: %(default)s)')
     parser.add_argument('--jerry-debugger',
