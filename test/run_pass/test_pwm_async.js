@@ -13,6 +13,16 @@
  * limitations under the License.
  */
 
+/* Description
+ * Every second asynchronously changes PWM duty cycles to one of 3 different 
+ * values. After that it tries 3 different frequencies every 2s also 
+ * asynchronously.
+ *
+ * Hardware setup
+ * Connect PWM output and GND pins with your PWM device. On Artik053 
+ * pins 3, 5, 6 or 9 are for PWM output.
+ */
+
 var assert = require('assert');
 var Pwm = require('pwm');
 var pin = require('tools/systemio_common').pin;
