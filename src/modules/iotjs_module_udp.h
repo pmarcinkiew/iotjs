@@ -29,7 +29,7 @@ typedef struct {
 } IOTJS_VALIDATED_STRUCT(iotjs_udpwrap_t);
 
 
-iotjs_udpwrap_t* iotjs_udpwrap_create(iotjs_jval_t judp);
+iotjs_udpwrap_t* iotjs_udpwrap_create(const iotjs_jval_t judp);
 
 iotjs_udpwrap_t* iotjs_udpwrap_from_handle(uv_udp_t* handle);
 iotjs_udpwrap_t* iotjs_udpwrap_from_jobject(iotjs_jval_t judp);

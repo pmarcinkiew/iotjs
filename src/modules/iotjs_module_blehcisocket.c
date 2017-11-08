@@ -61,8 +61,9 @@ iotjs_blehcisocket_t* iotjs_blehcisocket_create(iotjs_jval_t jble) {
 }
 
 
-iotjs_blehcisocket_t* iotjs_blehcisocket_instance_from_jval(iotjs_jval_t jble) {
-  iotjs_jobjectwrap_t* jobjectwrap = iotjs_jobjectwrap_from_jobject(&jble);
+iotjs_blehcisocket_t* iotjs_blehcisocket_instance_from_jval(
+    const iotjs_jval_t* jble) {
+  iotjs_jobjectwrap_t* jobjectwrap = iotjs_jobjectwrap_from_jobject(jble);
   return (iotjs_blehcisocket_t*)jobjectwrap;
 }
 
@@ -93,9 +94,9 @@ JHANDLER_FUNCTION(BindRaw) {
   int devId = 0;
   int* pDevId = NULL;
 
-  iotjs_jval_t raw = *iotjs_jhandler_get_arg(jhandler, 0);
-  if (iotjs_jval_is_number(&raw)) {
-    devId = iotjs_jval_as_number(&raw);
+  iotjs_jval_t raw = iotjs_jhandler_get_arg(jhandler, 0);
+  if (iotjs_jval_is_number(raw)) {
+    devId = iotjs_jval_as_number(raw);
     pDevId = &devId;
   }
 
@@ -143,7 +144,7 @@ JHANDLER_FUNCTION(SetFilter) {
   DJHANDLER_CHECK_ARGS(1, object);
 
   iotjs_bufferwrap_t* buffer =
-      iotjs_bufferwrap_from_jbuffer(*JHANDLER_GET_ARG(0, object));
+      iotjs_bufferwrap_from_jbuffer(JHANDLER_GET_ARG(0, object));
 
   iotjs_blehcisocket_setFilter(blehcisocket, iotjs_bufferwrap_buffer(buffer),
                                iotjs_bufferwrap_length(buffer));
@@ -167,7 +168,7 @@ JHANDLER_FUNCTION(Write) {
   DJHANDLER_CHECK_ARGS(1, object);
 
   iotjs_bufferwrap_t* buffer =
-      iotjs_bufferwrap_from_jbuffer(*JHANDLER_GET_ARG(0, object));
+      iotjs_bufferwrap_from_jbuffer(JHANDLER_GET_ARG(0, object));
 
   iotjs_blehcisocket_write(blehcisocket, iotjs_bufferwrap_buffer(buffer),
                            iotjs_bufferwrap_length(buffer));
@@ -181,11 +182,11 @@ JHANDLER_FUNCTION(BleHciSocketCons) {
   DJHANDLER_CHECK_ARGS(0);
 
   // Create object
-  iotjs_jval_t jblehcisocket = *JHANDLER_GET_THIS(object);
+  iotjs_jval_t jblehcisocket = JHANDLER_GET_THIS(object);
   iotjs_blehcisocket_t* blehcisocket = iotjs_blehcisocket_create(jblehcisocket);
   IOTJS_ASSERT(blehcisocket ==
                (iotjs_blehcisocket_t*)(iotjs_jval_get_object_native_handle(
-                   &jblehcisocket)));
+                   jblehcisocket)));
 }
 
 
