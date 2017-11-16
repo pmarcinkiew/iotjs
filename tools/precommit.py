@@ -286,7 +286,7 @@ if __name__ == '__main__':
                                     '--target-os=tizenrt',
                                     '--target-board=artik05x',
                                     '--sysroot=' + tizenrt_root + '/os',
-                                    '--jerry-heaplimit=128',
+                                    '--jerry-heaplimit=192',
                                     '--clean',
                                     ] + os_dependency_module['tizenrt']
                                     + build_args)
