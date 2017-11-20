@@ -49,6 +49,9 @@ JERRY_PROFILE_ROOT = fs.join(JERRY_ROOT, 'jerry-core', 'profiles')
 # Root directory for libtuv submodule.
 TUV_ROOT = fs.join(DEPS_ROOT, 'libtuv')
 
+# Root directory for mbedTLS submodule.
+EMBEDTLS_ROOT = fs.join(DEPS_ROOT, 'mbedtls')
+
 # Root directory for http-parser submodule.
 HTTPPARSER_ROOT = fs.join(DEPS_ROOT, 'http-parser')
 
