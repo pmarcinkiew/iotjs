@@ -171,7 +171,7 @@ iotjs_module_t.tryPath = function(path) {
 
 
 iotjs_module_t.load = function(id, parent) {
-  if (process.builtin_modules[id]) {
+  if (process.native_sources[id]) {
     return Native.require(id);
   }
   var module = new iotjs_module_t(id, parent);
@@ -209,7 +209,7 @@ iotjs_module_t.runMain = function() {
     var fn = process.debuggerSourceCompile();
     fn.call();
   } else {
-    iotjs_module_t.load(process.argv[1], null);
+    iotjs_module_t.load(process.argv[1], null, true);
   }
   while (process._onNextTick());
 };

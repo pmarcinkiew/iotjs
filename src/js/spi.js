@@ -14,7 +14,7 @@
  */
 
 var util = require('util');
-var spi = native;
+var spi = process.binding(process.binding.spi);
 
 var defaultConfiguration = {
   mode: spi.MODE[0],

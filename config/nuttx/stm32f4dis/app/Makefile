@@ -65,7 +65,6 @@ PRIORITY = $(CONFIG_IOTJS_PRIORITY)
 STACKSIZE = $(CONFIG_IOTJS_STACKSIZE)
 HEAPSIZE = $(CONFIG_IOTJS_HEAPSIZE)
 
-ASRCS = setjmp.S
 CSRCS = jerry_port.c
 MAINSRC = iotjs_main.c
 LIBS = libhttpparser.a libiotjs.a libjerry-core.a libtuv.a libjerry-libm.a

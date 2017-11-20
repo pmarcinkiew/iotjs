@@ -54,8 +54,11 @@ static bool iotjs_jerry_initialize(iotjs_environment_t* env) {
   // Initialize jerry.
   jerry_init(jerry_flags);
 
-  if (iotjs_environment_config(env)->debugger != NULL) {
-    jerry_debugger_init(iotjs_environment_config(env)->debugger->port);
+  if (iotjs_environment_config(env)->debugger) {
+    jerry_debugger_init(iotjs_environment_config(env)->debugger_port);
+  }
+
+  if (iotjs_environment_config(env)->debugger) {
     jerry_debugger_continue();
   }
 
@@ -100,17 +103,11 @@ static bool iotjs_run(iotjs_environment_t* env) {
   iotjs_jval_t jmain = iotjs_jhelper_eval("iotjs.js", strlen("iotjs.js"),
                                           iotjs_s, iotjs_l, false, &throws);
 #else
-  iotjs_jval_t jmain =
-      jerry_exec_snapshot_at((const void*)iotjs_js_modules_s,
-                             iotjs_js_modules_l, module_iotjs_idx, false);
-  if (jerry_value_has_error_flag(jmain)) {
-    jerry_value_clear_error_flag(&jmain);
-    throws = true;
-  }
+  iotjs_jval_t jmain = iotjs_exec_snapshot(module_iotjs_idx, &throws);
 #endif
 
   if (throws) {
-    iotjs_uncaught_exception(jmain);
+    iotjs_uncaught_exception(&jmain);
   }
 
   jerry_release_value(jmain);
@@ -124,8 +121,11 @@ static int iotjs_start(iotjs_environment_t* env) {
   const iotjs_jval_t global = jerry_get_global_object();
   jerry_set_object_native_pointer(global, env, NULL);
 
+  // Initialize builtin modules.
+  iotjs_module_list_init();
+
   // Initialize builtin process module.
-  const iotjs_jval_t process = iotjs_module_get("process");
+  const iotjs_jval_t process = *iotjs_init_process_module();
   iotjs_jval_set_property_jval(global, "process", process);
 
   // Release the global object
@@ -146,14 +146,12 @@ static int iotjs_start(iotjs_environment_t* env) {
     do {
       more = uv_run(iotjs_environment_loop(env), UV_RUN_ONCE);
       more |= iotjs_process_next_tick();
-
+      if (more == false) {
+        more = uv_loop_alive(iotjs_environment_loop(env));
+      }
       jerry_value_t ret_val = jerry_run_all_enqueued_jobs();
       if (jerry_value_has_error_flag(ret_val)) {
         DLOG("jerry_run_all_enqueued_jobs() failed");
-      }
-
-      if (more == false) {
-        more = uv_loop_alive(iotjs_environment_loop(env));
       }
     } while (more && !iotjs_environment_is_exiting(env));
 

@@ -12,7 +12,8 @@ Inside IoT.js
   * iotjs_reqwrap_t
 * [IoT.js Core](#iotjscoe)
   * Life cycle of IoT.js
-  * Builtin modules
+  * Builtin
+  * Native module
   * Event loop
 
 # Design
@@ -109,7 +110,7 @@ Whereas native handler does know that it is being called from Javascript (actual
 
 ## Embedding API
 
-Many Javascript engines these days provide embedding API. IoT.js uses the API to create [builtin module](#builtin-modules) and [native handler](#native-handler). See following link if you want further information about the API:
+Many Javascript engines these days provide embedding API. IoT.js uses the API to create [builtin module](#builtin) and [native handler](#native-handler). See following link if you want further information about the API:
  * [JerryScript API](http://jerryscript.net/api-reference)
  * [Duktape API](http://duktape.org/api.html)
  * [V8 embedder's guide](https://developers.google.com/v8/embed)
@@ -127,7 +128,7 @@ You can read [libuv design document](http://docs.libuv.org/en/v1.x/design.html) 
 `iotjs_handlewrap_t` is to bind a Javascript object and a libuv handle (e.g. file descriptor) together.
 `iotjs_handlewrap_t` inherits `iotjs_jobjectwrap_t` since it is linked with a Javascript object.
 
-Unlike `iotjs_jobjectwrap_t`, `iotjs_handlewrap_t` increases RC for the Javascript object when an instance of it is created to prevent GC while the handle is alive. The reference counter will be decreased after the handle is closed, allowing GC.
+Unlike `iotjs_jobjectwrap_t`, `iotjs_jobjectwrap_t` increases RC for the Javascript object when an instance of it is created to prevent GC while the handle is alive. The reference counter will be decreased after the handle is closed, allowing GC.
 
 ## iotjs_reqwrap_t
 
@@ -175,18 +176,23 @@ The process of IoT.js can be summarized as follow:
 6. Run [event loop](#event-loop) until there are no more events to be handled.
 7. Clean up.
 
-## Builtin modules
+## Builtin
 
-"Builtin" is Javascript objects implemented in C using [embedding API](#embedding-api), in Javascript or both.
-The list of builtin objects can be found in ['modules.json'](../../src/modules.json).
+"Builtin" is Javascript objects fully implemented in C using [embedding API](#embedding-api).
+The list of builtin objects can be found at `MAP_MODULE_LIST` macro in ['iotjs_module.h'](../../src/iotjs_module.h).
 
-Native parts of builtin modules are implemented as [native handler](#native-handler), so they
+Because methods of builtin modules are implemented as [native handler](#native-handler),
 are able to access underlying system using libuv, C library, and system call.
+Also, builtin modules could be used for optimizing performance of CPU bound routine or reduce binary size.
 
+Builtin modules are initialized during [intializing step of IoT.js](#life-cycle-of-iotjs) and released just before program terminates.
 
-The [basic modules and extended modules](../api/IoT.js-API-reference.md) provided by IoT.js are called 'Builtin module' because it will be included in the IoT.js binary.
-There is a [tool](../../tools/js2c.py) that transfer Javascript script source file into C file
-and this C file will be compiled into the IoT.js binary.
+## Native module
+
+The [basic modules and extended modules](../api/IoT.js-API-reference.md) provided by IoT.js are called 'native module' because it will be included IoT.js as binary format.(not as script).
+There is a [tool](../../tools/js2c.py) that transfer Javascript script source file into C file.
+
+Usually a native module needs help from couple of [builtin](#builtin) modules which are implemented in C thus able to access underlying system.
 
 Some native modules are bound to global object while others are on demand.
 On demand modules will be created at the moment when it is first required and will not released until the program terminates.

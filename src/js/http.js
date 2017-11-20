@@ -15,7 +15,8 @@
 
 var Server = require('http_server').Server;
 var client = require('http_client');
-var HTTPParser = require('httpparser');
+var HTTPParser = process.binding(process.binding.httpparser).HTTPParser;
+
 
 var ClientRequest = exports.ClientRequest = client.ClientRequest;
 

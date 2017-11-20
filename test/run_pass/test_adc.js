@@ -12,7 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+/**
+ * Description: tests if calling ADC module function works
+ * Usage: no setup required just run
+ *
+ * iotjs ./test_adc.js
+ *
+ */
 
 var Adc = require('adc');
 var assert = require('assert');

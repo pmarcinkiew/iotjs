@@ -1,0 +1,479 @@
+From 3e3699c67b96c0b618b0e3bbbf06afeacbcb48f9 Mon Sep 17 00:00:00 2001
+From: Tomasz Wozniak <t.wozniak@samsung.com>
+Date: Tue, 10 Oct 2017 15:46:16 +0200
+Subject: [PATCH] Provide setjmp/longjmp for freestanding arm build
+ environment.  - ARCH_HAVE_SETJMP and ARCH_SETJMP flags defined,  - force
+ CONFIG_ARCH_HAVE_SETJMP for arm  - provide include/setjmp.h generic header
+ with arch/arm equivalent
+
+---
+ arch/Kconfig                 |  15 ++++
+ arch/arm/include/setjmp.h    | 126 ++++++++++++++++++++++++++++++
+ arch/arm/src/common/setjmp.S | 172 ++++++++++++++++++++++++++++++++++++++++++
+ arch/arm/src/stm32/Make.defs |   4 +
+ include/setjmp.h             |  86 +++++++++++++++++++++
+ 5 files changed, 409 insertions(+)
+ create mode 100644 arch/arm/include/setjmp.h
+ create mode 100644 arch/arm/src/common/setjmp.S
+ create mode 100644 include/setjmp.h
+
+diff --git a/arch/Kconfig b/arch/Kconfig
+index f57f510..9cda894 100644
+--- a/arch/Kconfig
++++ b/arch/Kconfig
+@@ -13,6 +13,7 @@ config ARCH_ARM
+ 	select ARCH_HAVE_TLS
+ 	select ARCH_HAVE_VFORK
+ 	select ARCH_HAVE_STACKCHECK
++	select ARCH_HAVE_SETJMP
+ 	select ARCH_HAVE_CUSTOMOPT
+ 	---help---
+ 		The ARM architectures
+@@ -162,6 +163,10 @@ config ARCH_HAVE_MULTICPU
+ 	bool
+ 	default n
+ 
++config ARCH_HAVE_SETJMP
++	bool
++	default n
++
+ config ARCH_HAVE_VFORK
+ 	bool
+ 	default n
+@@ -218,6 +223,16 @@ menuconfig ARCH_ADDRENV
+ 		Support per-task address environments using the MMU... i.e., support
+ 		"processes"
+ 
++menuconfig ARCH_SETJMP
++	bool "Provide setjmp/longjmp implementation"
++	default n
++	depends on ARCH_HAVE_SETJMP
++	---help---
++		Support per-thread stack state save-restore routines.
++		These are POSIX-mandated, and usually are provided
++		by the compiler. Their use is limited (think: exceptions
++		in plain C), yet some compilers generate broken code for them.
++
+ if ARCH_ADDRENV && ARCH_NEED_ADDRENV_MAPPING
+ 
+ config ARCH_TEXT_VBASE
+diff --git a/arch/arm/include/setjmp.h b/arch/arm/include/setjmp.h
+new file mode 100644
+index 0000000..0b7cd65
+--- /dev/null
++++ b/arch/arm/include/setjmp.h
+@@ -0,0 +1,126 @@
++/****************************************************************************
++ *
++ * Copyright 2017 Samsung Electronics All Rights Reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
++ * either express or implied. See the License for the specific
++ * language governing permissions and limitations under the License.
++ *
++ ****************************************************************************/
++/*	$NetBSD: setjmp.h,v 1.5 2013/01/11 13:56:32 matt Exp $	*/
++/* $FreeBSD$ */
++
++/*
++ * machine/setjmp.h: machine dependent setjmp-related information.
++ */
++
++#ifndef __ARCH_ARM_INCLUDE_SETJMP_H
++#define __ARCH_ARM_INCLUDE_SETJMP_H
++
++/****************************************************************************
++ * Definitions
++ ****************************************************************************/
++
++#define	_JBLEN	64		/* size, in longs, of a jmp_buf */
++
++/*
++ * NOTE: The internal structure of a jmp_buf is *PRIVATE*
++ *       This information is provided as there is software
++ *       that fiddles with this with obtain the stack pointer
++ *	 (yes really ! and its commercial !).
++ *
++ * Description of the setjmp buffer
++ *
++ * word  0	magic number	(dependent on creator)
++ *	13	fpscr		vfp status control register
++ *	14	r4		register 4
++ *	15	r5		register 5
++ *	16	r6		register 6
++ *	17	r7		register 7
++ *	18	r8		register 8
++ *	19	r9		register 9
++ *	20	r10		register 10 (sl)
++ *	21	r11		register 11 (fp)
++ *	22	r12		register 12 (ip)
++ *	23	r13		register 13 (sp)
++ *	24	r14		register 14 (lr)
++ *	25	signal mask	(dependent on magic)
++ *	26	(con't)
++ *	27	(con't)
++ *	28	(con't)
++ *	32-33	d8		(vfp register d8)
++ *	34-35	d9		(vfp register d9)
++ *	36-37	d10		(vfp register d10)
++ *	38-39	d11		(vfp register d11)
++ *	40-41	d12		(vfp register d12)
++ *	42-43	d13		(vfp register d13)
++ *	44-45	d14		(vfp register d14)
++ *	46-47	d15		(vfp register d15)
++ *
++ * The magic number number identifies the jmp_buf and
++ * how the buffer was created as well as providing
++ * a sanity check
++ *
++ * A side note I should mention - Please do not tamper
++ * with the floating point fields. While they are
++ * always saved and restored at the moment this cannot
++ * be garenteed especially if the compiler happens
++ * to be generating soft-float code so no fp
++ * registers will be used.
++ *
++ * Whilst this can be seen an encouraging people to
++ * use the setjmp buffer in this way I think that it
++ * is for the best then if changes occur compiles will
++ * break rather than just having new builds falling over
++ * mysteriously.
++ */
++
++#define _JB_MAGIC_SETJMP		0x4278f501
++#define _JB_MAGIC_SETJMP_VFP	0x4278f503
++
++/* Valid for all jmp_buf's */
++
++#define _JB_MAGIC		 0
++#define _JB_REG_FPSCR		13
++#define _JB_REG_R4		14
++#define _JB_REG_R5		15
++#define _JB_REG_R6		16
++#define _JB_REG_R7		17
++#define _JB_REG_R8		18
++#define _JB_REG_R9		19
++#define _JB_REG_R10		20
++#define _JB_REG_R11		21
++#define _JB_REG_R12		22
++#define _JB_REG_R13		23
++#define _JB_REG_R14		24
++
++/* Only valid with the _JB_MAGIC_SETJMP magic */
++
++#define _JB_SIGMASK		25
++
++#define	_JB_REG_D8		32
++#define	_JB_REG_D9		34
++#define	_JB_REG_D10		36
++#define	_JB_REG_D11		38
++#define	_JB_REG_D12		40
++#define	_JB_REG_D13		42
++#define	_JB_REG_D14		44
++#define	_JB_REG_D15		46
++
++/****************************************************************************
++ * Type Declarations
++ ****************************************************************************/
++
++#ifndef __ASSEMBLER__
++typedef struct _jmp_buf { int _jb[_JBLEN + 1]; } jmp_buf[1];
++#endif
++
++#endif							/* __ARCH_ARM_INCLUDE_SETJMP_H */
+diff --git a/arch/arm/src/common/setjmp.S b/arch/arm/src/common/setjmp.S
+new file mode 100644
+index 0000000..cf09916
+--- /dev/null
++++ b/arch/arm/src/common/setjmp.S
+@@ -0,0 +1,172 @@
++/****************************************************************************
++ *
++ * Copyright 2017 Samsung Electronics All Rights Reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
++ * either express or implied. See the License for the specific
++ * language governing permissions and limitations under the License.
++ *
++ ****************************************************************************/
++
++ /*	$NetBSD: _setjmp.S,v 1.12 2013/04/19 13:45:45 matt Exp $	*/
++
++/*
++ * Copyright (c) 1997 Mark Brinicombe
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. All advertising materials mentioning features or use of this software
++ *    must display the following acknowledgement:
++ *	This product includes software developed by Mark Brinicombe
++ * 4. Neither the name of the University nor the names of its contributors
++ *    may be used to endorse or promote products derived from this software
++ *    without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ */
++
++/************************************************************************************
++ * Included Files
++ ************************************************************************************/
++
++#include <nuttx/config.h>
++#include <arch/setjmp.h>
++
++/****************************************************************************
++ * Public Symbols
++ ****************************************************************************/
++	.syntax	unified
++	.file	"setjmp.S"
++
++	.globl	setjmp
++	.type	setjmp, function
++
++	.globl	longjmp
++	.type	longjmp, function
++
++/****************************************************************************
++ * Public Functions
++ ****************************************************************************/
++
++	.text
++
++#if defined(__thumb__)
++	.thumb
++#endif
++
++/****************************************************************************
++ * Name: up_saveusercontext
++ ****************************************************************************/
++
++
++setjmp:
++	.fnstart
++	ldr	r1, .L_setjmp_magic
++
++#if defined(CONFIG_ARCH_FPU)
++	add	r2, r0, #(_JB_REG_D8 * 4)
++	vstmia	r2, {d8-d15}
++	vmrs	r2, fpscr
++	str	r2, [r0, #(_JB_REG_FPSCR * 4)]
++#endif /* !_STANDALONE && __ARM_ARCH >= 6 */
++
++	str	r1, [r0]
++
++	add	r0, r0, #(_JB_REG_R4 * 4)
++
++	/* Store integer registers */
++#ifndef __thumb__
++	stmia	r0, {r4-r14}
++#else
++	stmia	r0, {r4-r12}
++	str	r13, [r0, #((_JB_REG_R13 - _JB_REG_R4) * 4)]
++	str	r14, [r0, #((_JB_REG_R14 - _JB_REG_R4) * 4)]
++#endif
++
++	mov	r0, #0x00000000
++	bx	lr
++
++	.fnend
++	.size	setjmp, . - setjmp
++
++.L_setjmp_magic:
++#if defined(CONFIG_ARCH_FPU)
++	.word _JB_MAGIC_SETJMP_VFP
++#else
++	.word	_JB_MAGIC_SETJMP
++#endif
++
++longjmp:
++	.fnstart
++	ldr	r2, [r0]			/* get magic from jmp_buf */
++	ldr	ip, .L_setjmp_magic		/* load magic */
++	teq	ip, r2				/* magic correct? */
++	bne	botch				/*   no, botch */
++
++#if defined(CONFIG_ARCH_FPU)
++	add	ip, r0, #(_JB_REG_D8 * 4)
++	vldmia	ip, {d8-d15}
++	ldr	ip, [r0, #(_JB_REG_FPSCR * 4)]
++	vmsr	fpscr, ip
++#endif /* !_STANDALONE && __ARM_ARCH >= 6 */
++
++	add	r0, r0, #(_JB_REG_R4 * 4)
++   /* Restore integer registers */
++#ifndef __thumb__
++	ldmia	r0, {r4-r14}
++#else
++	ldmia	r0, {r4-r12}
++	ldr	r13, [r0, #((_JB_REG_R13 - _JB_REG_R4) * 4)]
++	ldr	r14, [r0, #((_JB_REG_R14 - _JB_REG_R4) * 4)]
++#endif
++
++#ifndef __thumb__
++	/* Validate sp and r14 */
++	teq	sp, #0
++	it	ne
++	teqne	r14, #0
++	it	eq
++	beq	botch
++#else
++	cmp sp, #0
++	beq botch
++	cmp lr, #0
++	beq botch
++#endif
++
++	/* Set return value */
++	movs	r0, r1
++	it	eq
++	moveq	r0, #0x00000001
++	bx lr
++
++	/* validation failed, die die die. */
++botch:
++	b	.
++	.fnend
++	.size	longjmp, . - longjmp
+diff --git a/arch/arm/src/stm32/Make.defs b/arch/arm/src/stm32/Make.defs
+index 8b10228..5a0b1a1 100644
+--- a/arch/arm/src/stm32/Make.defs
++++ b/arch/arm/src/stm32/Make.defs
+@@ -102,6 +102,10 @@ CMN_CSRCS += up_copyarmstate.c
+ endif
+ endif
+ 
++ifeq ($(CONFIG_ARCH_SETJMP),y)
++CMN_ASRCS += setjmp.S
++endif
++
+ ifeq ($(CONFIG_ARMV7M_ITMSYSLOG),y)
+ CMN_CSRCS += up_itm_syslog.c
+ endif
+diff --git a/include/setjmp.h b/include/setjmp.h
+new file mode 100644
+index 0000000..2644dcf
+--- /dev/null
++++ b/include/setjmp.h
+@@ -0,0 +1,86 @@
++/****************************************************************************
++ *
++ * Copyright 2017 Samsung Electronics All Rights Reserved.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
++ * either express or implied. See the License for the specific
++ * language governing permissions and limitations under the License.
++ *
++ ****************************************************************************/
++/*-
++ * Copyright (c) 1990, 1993
++ *	The Regents of the University of California.  All rights reserved.
++ * (c) UNIX System Laboratories, Inc.
++ * All or some portions of this file are derived from material licensed
++ * to the University of California by American Telephone and Telegraph
++ * Co. or Unix System Laboratories, Inc. and are reproduced herein with
++ * the permission of UNIX System Laboratories, Inc.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the University nor the names of its contributors
++ *    may be used to endorse or promote products derived from this software
++ *    without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ *	@(#)setjmp.h	8.2 (Berkeley) 1/21/94
++ * $FreeBSD$
++ */
++
++#ifndef __INCLUDE_SETJMP_H
++#define __INCLUDE_SETJMP_H
++
++/****************************************************************************
++ * Included Files
++ ****************************************************************************/
++
++#include <nuttx/config.h>
++#ifndef CONFIG_ARCH_HAVE_SETJMP
++#error "setjmp not supported on this arch!"
++#else /* defined CONFIG_ARCH_HAVE_SETJMP */
++#include <arch/types.h>
++#include <arch/setjmp.h>
++#include <nuttx/compiler.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++/****************************************************************************
++ * Public Function Prototypes
++ ****************************************************************************/
++void longjmp(jmp_buf env, int savesigs) noreturn_function;
++int setjmp(jmp_buf env);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* defined CONFIG_ARCH_HAVE_SETJMP */
++
++#endif							/* __INCLUDE_SETJMP_H */
+-- 
+2.7.4
+

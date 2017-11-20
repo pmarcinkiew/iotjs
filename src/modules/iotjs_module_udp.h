@@ -29,7 +29,7 @@ typedef struct {
 } IOTJS_VALIDATED_STRUCT(iotjs_udpwrap_t);
 
 
-iotjs_udpwrap_t* iotjs_udpwrap_create(iotjs_jval_t judp);
+iotjs_udpwrap_t* iotjs_udpwrap_create(const iotjs_jval_t judp);
 
 iotjs_udpwrap_t* iotjs_udpwrap_from_handle(uv_udp_t* handle);
 iotjs_udpwrap_t* iotjs_udpwrap_from_jobject(iotjs_jval_t judp);
@@ -42,11 +42,13 @@ typedef struct {
   iotjs_reqwrap_t reqwrap;
   uv_udp_send_t req;
   size_t msg_size;
+  void* req_data;
 } IOTJS_VALIDATED_STRUCT(iotjs_send_reqwrap_t);
 
 #define THIS iotjs_send_reqwrap_t* send_reqwrap
 
 iotjs_send_reqwrap_t* iotjs_send_reqwrap_create(iotjs_jval_t jcallback,
+                                                void* req_data,
                                                 const size_t msg_size);
 
 void iotjs_send_reqwrap_dispatched(THIS);

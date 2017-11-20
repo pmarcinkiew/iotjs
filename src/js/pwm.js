@@ -14,6 +14,7 @@
  */
 
 var util = require('util');
+var pwm = process.binding(process.binding.pwm);
 
 
 function Pwm() {
@@ -66,7 +67,7 @@ function pwmPinOpen(configuration, callback) {
       self._configuration.period = period;
     }
 
-    _binding = new native(self._configuration, function(err) {
+    _binding = new pwm(self._configuration, function(err) {
       util.isFunction(callback) && callback.call(self, err);
     });
 

@@ -76,117 +76,117 @@ static void iotjs_blehcisocket_destroy(THIS) {
 }
 
 
-JS_FUNCTION(Start) {
-  JS_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
+JHANDLER_FUNCTION(Start) {
+  JHANDLER_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
 
   iotjs_blehcisocket_start(blehcisocket);
 
-  return jerry_create_undefined();
+  iotjs_jhandler_return_undefined(jhandler);
 }
 
 
-JS_FUNCTION(BindRaw) {
-  JS_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
-  JS_CHECK(jargc >= 1);
+JHANDLER_FUNCTION(BindRaw) {
+  JHANDLER_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
+  JHANDLER_CHECK(iotjs_jhandler_get_arg_length(jhandler) >= 1);
 
   int devId = 0;
   int* pDevId = NULL;
 
-  if (jerry_value_is_number(jargv[0])) {
-    devId = iotjs_jval_as_number(jargv[0]);
+  iotjs_jval_t raw = iotjs_jhandler_get_arg(jhandler, 0);
+  if (jerry_value_is_number(raw)) {
+    devId = iotjs_jval_as_number(raw);
     pDevId = &devId;
   }
 
   int ret = iotjs_blehcisocket_bindRaw(blehcisocket, pDevId);
 
-  return jerry_create_number(ret);
+  iotjs_jhandler_return_number(jhandler, ret);
 }
 
 
-JS_FUNCTION(BindUser) {
-  JS_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
-  DJS_CHECK_ARGS(1, number);
+JHANDLER_FUNCTION(BindUser) {
+  JHANDLER_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
+  DJHANDLER_CHECK_ARGS(1, number);
 
-  int devId = JS_GET_ARG(0, number);
+  int devId = JHANDLER_GET_ARG(0, number);
   int* pDevId = &devId;
 
   int ret = iotjs_blehcisocket_bindUser(blehcisocket, pDevId);
 
-  return jerry_create_number(ret);
+  iotjs_jhandler_return_number(jhandler, ret);
 }
 
 
-JS_FUNCTION(BindControl) {
-  JS_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
+JHANDLER_FUNCTION(BindControl) {
+  JHANDLER_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
 
   iotjs_blehcisocket_bindControl(blehcisocket);
 
-  return jerry_create_undefined();
+  iotjs_jhandler_return_undefined(jhandler);
 }
 
 
-JS_FUNCTION(IsDevUp) {
-  JS_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
+JHANDLER_FUNCTION(IsDevUp) {
+  JHANDLER_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
 
   bool ret = iotjs_blehcisocket_isDevUp(blehcisocket);
 
-  return jerry_create_boolean(ret);
+  iotjs_jhandler_return_boolean(jhandler, ret);
 }
 
 
-JS_FUNCTION(SetFilter) {
-  JS_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
-  DJS_CHECK_ARGS(1, object);
+JHANDLER_FUNCTION(SetFilter) {
+  JHANDLER_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
+  DJHANDLER_CHECK_ARGS(1, object);
 
   iotjs_bufferwrap_t* buffer =
-      iotjs_bufferwrap_from_jbuffer(JS_GET_ARG(0, object));
+      iotjs_bufferwrap_from_jbuffer(JHANDLER_GET_ARG(0, object));
 
   iotjs_blehcisocket_setFilter(blehcisocket, iotjs_bufferwrap_buffer(buffer),
                                iotjs_bufferwrap_length(buffer));
 
-  return jerry_create_undefined();
+  iotjs_jhandler_return_undefined(jhandler);
 }
 
 
-JS_FUNCTION(Stop) {
-  JS_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
+JHANDLER_FUNCTION(Stop) {
+  JHANDLER_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
 
   iotjs_blehcisocket_stop(blehcisocket);
 
-  return jerry_create_undefined();
+  iotjs_jhandler_return_undefined(jhandler);
 }
 
 
-JS_FUNCTION(Write) {
-  JS_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
-  DJS_CHECK_ARGS(1, object);
+JHANDLER_FUNCTION(Write) {
+  JHANDLER_DECLARE_THIS_PTR(blehcisocket, blehcisocket);
+  DJHANDLER_CHECK_ARGS(1, object);
 
   iotjs_bufferwrap_t* buffer =
-      iotjs_bufferwrap_from_jbuffer(JS_GET_ARG(0, object));
+      iotjs_bufferwrap_from_jbuffer(JHANDLER_GET_ARG(0, object));
 
   iotjs_blehcisocket_write(blehcisocket, iotjs_bufferwrap_buffer(buffer),
                            iotjs_bufferwrap_length(buffer));
 
-  return jerry_create_undefined();
+  iotjs_jhandler_return_undefined(jhandler);
 }
 
 
-JS_FUNCTION(BleHciSocketCons) {
-  DJS_CHECK_THIS(object);
+JHANDLER_FUNCTION(BleHciSocketCons) {
+  DJHANDLER_CHECK_THIS(object);
 
   // Create object
-  iotjs_jval_t jblehcisocket = JS_GET_THIS(object);
+  iotjs_jval_t jblehcisocket = JHANDLER_GET_THIS(object);
   iotjs_blehcisocket_t* blehcisocket = iotjs_blehcisocket_create(jblehcisocket);
   IOTJS_ASSERT(blehcisocket ==
                (iotjs_blehcisocket_t*)(iotjs_jval_get_object_native_handle(
                    jblehcisocket)));
-  return jerry_create_undefined();
 }
 
 
 iotjs_jval_t InitBlehcisocket() {
   iotjs_jval_t jblehcisocketCons =
-      jerry_create_external_function(BleHciSocketCons);
+      iotjs_jval_create_function_with_dispatch(BleHciSocketCons);
 
   iotjs_jval_t prototype = iotjs_jval_create_object();
 

@@ -17,7 +17,7 @@
 var fs = exports;
 var constants = require('constants');
 var util = require('util');
-var fsBuiltin = native;
+var fsBuiltin = process.binding(process.binding.fs);
 
 fs.exists = function(path, callback) {
   if (!path || !path.length) {

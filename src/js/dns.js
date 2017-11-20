@@ -14,6 +14,7 @@
  */
 
 var util = require('util');
+var dnsBuiltin = process.binding(process.binding.dns);
 
 exports.lookup = function lookup(hostname, options, callback) {
   var hints = 0;
@@ -46,17 +47,17 @@ exports.lookup = function lookup(hostname, options, callback) {
     throw new TypeError('invalid argument: family must be 4 or 6');
 
   if (process.platform != 'nuttx' && process.platform != 'tizenrt') {
-    native.getaddrinfo(hostname, family, hints, callback);
+    dnsBuiltin.getaddrinfo(hostname, family, hints, callback);
   } else {
-    // native.getaddrinfo is synchronous on these platforms.
+    // dnsBuiltin.getaddrinfo is synchronous on these platforms.
     // needs to be wrapped into an asynchronous call.
     process.nextTick(function() {
-      native.getaddrinfo(hostname, family, hints, callback);
+      dnsBuiltin.getaddrinfo(hostname, family, hints, callback);
     });
   }
 };
 
 
 // uv_getaddrinfo flags
-exports.ADDRCONFIG = native.AI_ADDRCONFIG;
-exports.V4MAPPED = native.AI_V4MAPPED;
+exports.ADDRCONFIG = dnsBuiltin.AI_ADDRCONFIG;
+exports.V4MAPPED = dnsBuiltin.AI_V4MAPPED;

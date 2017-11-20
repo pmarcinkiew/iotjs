@@ -21,7 +21,7 @@
 #include <stdio.h>
 
 
-static iotjs_gpio_t* iotjs_gpio_instance_from_jval(const iotjs_jval_t jgpio);
+static iotjs_gpio_t* iotjs_gpio_instance_from_jval(iotjs_jval_t jgpio);
 IOTJS_DEFINE_NATIVE_HANDLE_INFO_THIS_MODULE(gpio);
 
 
@@ -86,9 +86,10 @@ static iotjs_jval_t iotjs_gpio_reqwrap_jcallback(THIS) {
 }
 
 
-static iotjs_gpio_t* iotjs_gpio_instance_from_jval(const iotjs_jval_t jgpio) {
-  uintptr_t handle = iotjs_jval_get_object_native_handle(jgpio);
-  return (iotjs_gpio_t*)handle;
+static iotjs_gpio_t* iotjs_gpio_instance_from_jval(iotjs_jval_t jgpio) {
+  iotjs_gpio_t* gpio =
+      (iotjs_gpio_t*)(iotjs_jval_get_object_native_handle(jgpio));
+  return gpio;
 }
 
 
@@ -204,7 +205,7 @@ static void iotjs_gpio_after_worker(uv_work_t* work_req, int status) {
 
 
 static void gpio_set_configurable(iotjs_gpio_t* gpio,
-                                  iotjs_jval_t jconfigurable) {
+                                  const iotjs_jval_t jconfigurable) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_gpio_t, gpio);
 
   iotjs_jval_t jpin =
@@ -253,86 +254,84 @@ static void gpio_set_configurable(iotjs_gpio_t* gpio,
   } while (0)
 
 
-JS_FUNCTION(GpioConstructor) {
-  DJS_CHECK_THIS(object);
-  DJS_CHECK_ARGS(2, object, function);
+JHANDLER_FUNCTION(GpioConstructor) {
+  DJHANDLER_CHECK_THIS(object);
+  DJHANDLER_CHECK_ARGS(2, object, function);
 
   // Create GPIO object
-  const iotjs_jval_t jgpio = JS_GET_THIS(object);
+  const iotjs_jval_t jgpio = JHANDLER_GET_THIS(object);
   iotjs_gpio_t* gpio = iotjs_gpio_create(jgpio);
   IOTJS_ASSERT(gpio == iotjs_gpio_instance_from_jval(jgpio));
 
-  gpio_set_configurable(gpio, JS_GET_ARG(0, object));
+  gpio_set_configurable(gpio, JHANDLER_GET_ARG(0, object));
 
-  const iotjs_jval_t jcallback = JS_GET_ARG(1, function);
+  const iotjs_jval_t jcallback = JHANDLER_GET_ARG(1, function);
   GPIO_ASYNC(open, gpio, jcallback, kGpioOpOpen);
-
-  return jerry_create_undefined();
 }
 
 
-JS_FUNCTION(Write) {
-  JS_DECLARE_THIS_PTR(gpio, gpio);
-  DJS_CHECK_ARGS(1, boolean);
-  DJS_CHECK_ARG_IF_EXIST(1, function);
+JHANDLER_FUNCTION(Write) {
+  JHANDLER_DECLARE_THIS_PTR(gpio, gpio);
+  DJHANDLER_CHECK_ARGS(1, boolean);
+  DJHANDLER_CHECK_ARG_IF_EXIST(1, function);
 
-  const iotjs_jval_t jcallback = JS_GET_ARG_IF_EXIST(1, function);
+  const iotjs_jval_t jcallback = JHANDLER_GET_ARG_IF_EXIST(1, function);
 
-  bool value = JS_GET_ARG(0, boolean);
+  bool value = JHANDLER_GET_ARG(0, boolean);
 
   if (!jerry_value_is_null(jcallback)) {
     GPIO_ASYNC_WITH_VALUE(write, gpio, jcallback, kGpioOpWrite, value);
   } else {
     if (!iotjs_gpio_write(gpio, value)) {
-      return JS_CREATE_ERROR(COMMON, "GPIO WriteSync Error");
+      JHANDLER_THROW(COMMON, "GPIO WriteSync Error");
     }
   }
 
-  return jerry_create_null();
+  iotjs_jhandler_return_null(jhandler);
 }
 
 
-JS_FUNCTION(Read) {
-  JS_DECLARE_THIS_PTR(gpio, gpio);
-  DJS_CHECK_ARG_IF_EXIST(0, function);
+JHANDLER_FUNCTION(Read) {
+  JHANDLER_DECLARE_THIS_PTR(gpio, gpio);
+  DJHANDLER_CHECK_ARG_IF_EXIST(0, function);
 
-  const iotjs_jval_t jcallback = JS_GET_ARG_IF_EXIST(0, function);
+  const iotjs_jval_t jcallback = JHANDLER_GET_ARG_IF_EXIST(0, function);
 
   if (!jerry_value_is_null(jcallback)) {
     GPIO_ASYNC(read, gpio, jcallback, kGpioOpRead);
-    return jerry_create_null();
+    iotjs_jhandler_return_null(jhandler);
   } else {
     int value = iotjs_gpio_read(gpio);
     if (value < 0) {
-      return JS_CREATE_ERROR(COMMON, "GPIO ReadSync Error");
+      JHANDLER_THROW(COMMON, "GPIO ReadSync Error");
     }
-    return jerry_create_boolean(value);
+    iotjs_jhandler_return_boolean(jhandler, value);
   }
 }
 
 
-JS_FUNCTION(Close) {
-  JS_DECLARE_THIS_PTR(gpio, gpio);
-  DJS_CHECK_ARG_IF_EXIST(0, function);
+JHANDLER_FUNCTION(Close) {
+  JHANDLER_DECLARE_THIS_PTR(gpio, gpio)
+  DJHANDLER_CHECK_ARG_IF_EXIST(0, function);
 
-  const iotjs_jval_t jcallback = JS_GET_ARG_IF_EXIST(0, function);
+  const iotjs_jval_t jcallback = JHANDLER_GET_ARG_IF_EXIST(0, function);
 
   if (!jerry_value_is_null(jcallback)) {
     GPIO_ASYNC(close, gpio, jcallback, kGpioOpClose);
   } else {
     if (!iotjs_gpio_close(gpio)) {
-      return JS_CREATE_ERROR(COMMON, "GPIO CloseSync Error");
+      JHANDLER_THROW(COMMON, "GPIO CloseSync Error");
     }
   }
 
-  return jerry_create_null();
+  iotjs_jhandler_return_null(jhandler);
 }
 
 
 iotjs_jval_t InitGpio() {
   iotjs_jval_t jgpio = iotjs_jval_create_object();
   iotjs_jval_t jgpioConstructor =
-      jerry_create_external_function(GpioConstructor);
+      iotjs_jval_create_function_with_dispatch(GpioConstructor);
   iotjs_jval_set_property_jval(jgpio, IOTJS_MAGIC_STRING_GPIO,
                                jgpioConstructor);
 
