@@ -13,6 +13,14 @@
  * limitations under the License.
  */
 
+/* Description:
+ * Writes synchronously a msg to uart, then asynchronously reads and 
+ * writes another msg. Exits when both async read and write are done.
+ * 
+ * Hardware setup:
+ * Connect UART RX and TX pins with a wire. On Artik053 these are pin 0 and 1.
+ */
+
 var assert = require('assert');
 var Uart = require('uart');
 

@@ -111,16 +111,6 @@ Writable.prototype.end = function(chunk, callback) {
   var state = this._writableState;
 
   // Because NuttX cannot poll 'EOF',so forcely raise EOF event.
-  if (process.platform === 'nuttx') {
-    if (!state.ending) {
-      if (util.isNullOrUndefined(chunk)) {
-        chunk = '\\e\\n\\d';
-      } else {
-        chunk += '\\e\\n\\d';
-      }
-    }
-  }
-
   if (!util.isNullOrUndefined(chunk)) {
     this.write(chunk);
   }

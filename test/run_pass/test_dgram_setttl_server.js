@@ -38,12 +38,12 @@ server.on('message', function(data, rinfo) {
     assert.equal(err, null);
     assert.equal(len, msg.length);
   });
-  setTimeout(function() { server.close() }, 4000);
 });
 
 
 server.on('listening', function() {
   console.log('listening');
+  setTimeout(function() { server.close() }, 4000);
 });
 
 server.bind(port);

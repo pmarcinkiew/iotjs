@@ -59,7 +59,7 @@ def init_options():
     argv = []
 
     config_option = config['build_option']
-    list_with_commas = ['external-modules']
+    list_with_commas = ['iotjs-include-module','iotjs-exclude-module']
 
     for opt_key in config_option:
         opt_val = config_option[opt_key]
@@ -97,8 +97,6 @@ def init_options():
     parser.add_argument('--config', default=path.BUILD_CONFIG_PATH,
         help='Specify the config file (default: %(default)s)',
         dest='config_path')
-
-    parser.add_argument('--profile', help='Specify the profile file for IoT.js')
 
     parser.add_argument('--target-arch',
         choices=['arm', 'x86', 'i686', 'x86_64', 'x64'],
@@ -147,10 +145,18 @@ def init_options():
         help='Specify additional external shared library '
              '(can be used multiple times)')
 
-    parser.add_argument('--external-modules',
+    parser.add_argument('--iotjs-include-module',
         action='store', default=set(), type=lambda x: set(x.split(',')),
-        help='Specify the path of modules.json files which should be processed '
-             '(format: path1,path2,...)')
+        help='Specify iotjs modules which should be included '
+             '(format: module_1,module_2,...)')
+    parser.add_argument('--iotjs-exclude-module',
+        action='store', default=set(), type=lambda x: set(x.split(',')),
+        help='Specify iotjs modules which should be excluded '
+             '(format: module_1,module_2,...)')
+
+    parser.add_argument('--iotjs-minimal-profile',
+        action='store_true', default=False,
+        help='Build IoT.js with minimal profile')
 
     parser.add_argument('--jerry-cmake-param',
         action='append', default=[],
@@ -232,6 +238,9 @@ def adjust_options(options):
     elif options.target_board == 'none':
         options.target_board = None
 
+    if options.iotjs_minimal_profile:
+        options.no_check_test = True
+
     # Then add calculated options.
     options.host_tuple = '%s-%s' % (platform.arch(), platform.os())
     options.target_tuple = '%s-%s' % (options.target_arch, options.target_os)
@@ -273,7 +282,10 @@ def print_progress(msg):
 
 def init_submodule():
     ex.check_run_cmd('git', ['submodule', 'init'])
-    ex.check_run_cmd('git', ['submodule', 'update'])
+    job_commands = []
+    for module in ['http-parser', 'libtuv', 'jerry']:
+        job_commands.append(('git', ['submodule', 'update', 'deps/' + module]))
+    ex.check_run_parallel(job_commands, True)
 
 
 def build_cmake_args(options, for_jerry=False):
@@ -291,6 +303,22 @@ def build_cmake_args(options, for_jerry=False):
     compile_flags += options.compile_flag
     compile_flags += options.jerry_compile_flag if for_jerry else []
 
+    # nosdtinc/nostdlib must be specified when toolchain contains
+    # a non-matching C library.
+    # This is the case with nuttx/TizenRT that come with uClibc,
+    # while prebuild GCC mostly comes with glibc/newlib.
+    # TODO: consider factoring this out to an option
+    if options.target_os in ['nuttx', 'tizenrt']:
+        compile_flags.extend(['-nostdinc', '-nostdlib'])
+
+    # With sysroot set, exclude default (host) directories from build.
+    if options.sysroot:
+        compile_flags.extend(['--sysroot', options.sysroot])
+        compile_flags.append('-isystem =/include')
+        if options.target_os == 'nuttx':
+            compile_flags.append('-isystem =/include/nuttx')
+        if options.target_os == 'tizenrt':
+            compile_flags.append('-isystem =/include/tinyara')
     cmake_args.append("-DCMAKE_C_FLAGS='%s'" % (' '.join(compile_flags)))
 
     # link flags
@@ -351,11 +379,14 @@ def build_iotjs(options):
         '-DPLATFORM_DESCRIPTOR=%s' % options.target_tuple,
         '-DENABLE_LTO=%s' % get_on_off(options.jerry_lto), # --jerry-lto
         '-DENABLE_SNAPSHOT=%s' % get_on_off(not options.no_snapshot),
+        '-DENABLE_MINIMAL=%s' % get_on_off(options.iotjs_minimal_profile),
         '-DBUILD_LIB_ONLY=%s' % get_on_off(options.buildlib), # --build-lib
         # --jerry-memstat
         '-DFEATURE_MEM_STATS=%s' % get_on_off(options.jerry_memstat),
-        # --external-modules
-        "-DEXTERNAL_MODULES='%s'" % ';'.join(options.external_modules),
+        # --iotjs-include-module
+        "-DIOTJS_INCLUDE_MODULE='%s'" % ','.join(options.iotjs_include_module),
+        # --iotjs-exclude-module
+        "-DIOTJS_EXCLUDE_MODULE='%s'" % ','.join(options.iotjs_exclude_module),
         # --jerry-profile
         "-DFEATURE_PROFILE='%s'" % options.jerry_profile,
     ]
@@ -401,10 +432,6 @@ def build_iotjs(options):
     if options.experimental:
         options.compile_flag.append('-DEXPERIMENTAL')
 
-    # --profile
-    if options.profile:
-        cmake_opt.append("-DIOTJS_PROFILE='%s'" % options.profile)
-
     # Add common cmake options.
     cmake_opt.extend(build_cmake_args(options))
 
@@ -422,6 +449,9 @@ def run_checktest(options):
     # IoT.js executable
     iotjs = fs.join(options.build_root, 'bin', 'iotjs')
     build_args = ['quiet=' + checktest_quiet]
+    if options.iotjs_exclude_module:
+        skip_module = ','.join(options.iotjs_exclude_module)
+        build_args.append('skip-module=' + skip_module)
 
     # experimental
     if options.experimental:

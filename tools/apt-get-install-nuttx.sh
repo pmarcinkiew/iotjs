@@ -17,5 +17,6 @@
 sudo apt-get update -q
 sudo apt-get install -q -y \
     autoconf libtool gperf flex bison autoconf2.13 \
-    cmake libncurses-dev libusb-1.0-0-dev genromfs \
-    libsgutils2-dev gcc-arm-none-eabi
+    cmake libncurses-dev libusb-1.0-0-dev \
+    libsgutils2-dev gcc-arm-none-eabi \
+    genromfs

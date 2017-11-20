@@ -18,13 +18,13 @@
 # And this file also generates magic string list in src/iotjs_string_ext.inl.h
 # file to reduce JerryScript heap usage.
 
-import os
 import re
 import subprocess
 import struct
 
 from common_py.system.filesystem import FileSystem as fs
 from common_py import path
+
 
 def regroup(l, n):
     return [l[i:i+n] for i in range(0, len(l), n)]
@@ -141,9 +141,9 @@ NATIVE_SNAPSHOT_STRUCT_H = '''
 typedef struct {
   const char* name;
   const uint32_t idx;
-} iotjs_js_module_t;
+} iotjs_js_module;
 
-extern const iotjs_js_module_t js_modules[];
+extern const iotjs_js_module natives[];
 '''
 
 MODULE_VARIABLES_H = '''
@@ -166,13 +166,13 @@ typedef struct {
   const char* name;
   const void* code;
   const size_t length;
-} iotjs_js_module_t;
+} iotjs_js_module;
 
-extern const iotjs_js_module_t js_modules[];
+extern const iotjs_js_module natives[];
 '''
 
 NATIVE_STRUCT_C = '''
-const iotjs_js_module_t js_modules[] = {{
+const iotjs_js_module natives[] = {{
 {MODULES}
 }};
 '''
@@ -196,9 +196,9 @@ def format_code(code, indent):
     return "\n".join(lines)
 
 
-def merge_snapshots(snapshot_infos, snapshot_tool):
+def merge_snapshots(snapshot_infos, snapshot_merger):
     output_path = fs.join(path.SRC_ROOT, 'js','merged.modules')
-    cmd = [snapshot_tool, "merge", "-o", output_path]
+    cmd = [snapshot_merger, "merge", "-o", output_path]
     cmd.extend([item['path'] for item in snapshot_infos])
 
     ret = subprocess.call(cmd)
@@ -218,27 +218,26 @@ def merge_snapshots(snapshot_infos, snapshot_tool):
     return code
 
 
-def get_snapshot_contents(js_path, snapshot_tool):
+def get_snapshot_contents(module_name, snapshot_generator):
     """ Convert the given module with the snapshot generator
         and return the resulting bytes.
     """
+    js_path = fs.join(path.SRC_ROOT, 'js', module_name + '.js')
     wrapped_path = js_path + ".wrapped"
     snapshot_path = js_path + ".snapshot"
-    module_name = os.path.splitext(os.path.basename(js_path))[0]
 
     with open(wrapped_path, 'w') as fwrapped, open(js_path, "r") as fmodule:
         if module_name != "iotjs":
-            fwrapped.write("(function(exports, require, module, native) {\n")
+            fwrapped.write("(function(exports, require, module) {\n")
 
         fwrapped.write(fmodule.read())
 
         if module_name != "iotjs":
             fwrapped.write("});\n")
 
-    ret = subprocess.call([snapshot_tool,
-                           "generate",
-                           "--context", "eval",
-                           "-o", snapshot_path,
+    ret = subprocess.call([snapshot_generator,
+                           "--save-snapshot-for-eval",
+                           snapshot_path,
                            wrapped_path])
 
     fs.remove(wrapped_path)
@@ -251,8 +250,9 @@ def get_snapshot_contents(js_path, snapshot_tool):
     return snapshot_path
 
 
-def get_js_contents(js_path, is_debug_mode=False):
+def get_js_contents(name, is_debug_mode=False):
     """ Read the contents of the given js module. """
+    js_path = fs.join(path.SRC_ROOT, 'js', name + '.js')
     with open(js_path, "r") as f:
          code = f.read()
 
@@ -263,9 +263,9 @@ def get_js_contents(js_path, is_debug_mode=False):
     return code
 
 
-def js2c(buildtype, js_modules, snapshot_tool=None, verbose=False):
-    is_debug_mode = (buildtype == "debug")
-    no_snapshot = (snapshot_tool == None)
+def js2c(buildtype, no_snapshot, js_modules, js_dumper, snapshot_merger,
+         verbose=False):
+    is_debug_mode = buildtype == "debug"
     magic_string_set = set()
 
     str_const_regex = re.compile('^#define IOTJS_MAGIC_STRING_\w+\s+"(\w+)"$')
@@ -285,15 +285,12 @@ def js2c(buildtype, js_modules, snapshot_tool=None, verbose=False):
         fout_c.write(HEADER2)
 
         snapshot_infos = []
-        js_module_names = []
-        for idx, module in enumerate(sorted(js_modules)):
-            [name, js_path] = module.split('=', 1)
-            js_module_names.append(name)
+        for idx, name in enumerate(sorted(js_modules)):
             if verbose:
                 print('Processing module: %s' % name)
 
             if no_snapshot:
-                code = get_js_contents(js_path, is_debug_mode)
+                code = get_js_contents(name, is_debug_mode)
                 code_string = format_code(code, 1)
 
                 fout_h.write(MODULE_VARIABLES_H.format(NAME=name))
@@ -302,7 +299,7 @@ def js2c(buildtype, js_modules, snapshot_tool=None, verbose=False):
                                                        SIZE=len(code),
                                                        CODE=code_string))
             else:
-                code_path = get_snapshot_contents(js_path, snapshot_tool)
+                code_path = get_snapshot_contents(name, js_dumper)
                 info = {'name': name, 'path': code_path, 'idx': idx}
                 snapshot_infos.append(info)
 
@@ -310,14 +307,15 @@ def js2c(buildtype, js_modules, snapshot_tool=None, verbose=False):
                 fout_c.write(MODULE_SNAPSHOT_VARIABLES_C.format(NAME=name,
                                                                 IDX=idx))
 
+
         if no_snapshot:
             modules_struct = [
                '  {{ {0}_n, {0}_s, SIZE_{1} }},'.format(name, name.upper())
-               for name in sorted(js_module_names)
+               for name in sorted(js_modules)
             ]
             modules_struct.append('  { NULL, NULL, 0 }')
         else:
-            code = merge_snapshots(snapshot_infos, snapshot_tool)
+            code = merge_snapshots(snapshot_infos, snapshot_merger)
             code_string = format_code(code, 1)
             magic_string_set |= parse_literals(code)
 
@@ -368,21 +366,24 @@ if __name__ == "__main__":
         choices=['debug', 'release'], default='debug',
         help='Specify the build type: %(choices)s (default: %(default)s)')
     parser.add_argument('--modules', required=True,
-        help='List of JS files to process. Format: '
-             '<module_name1>=<js_file1>,<module_name2>=<js_file2>,...')
-    parser.add_argument('--snapshot-tool', default=None,
-        help='Executable to use for generating snapshots and merging them '
-             '(ex.: the JerryScript snapshot tool). '
+        help='List of JS modules to process. Format: <module>,<module2>,...')
+    parser.add_argument('--snapshot-generator', default=None,
+        help='Executable to use for generating snapshots from the JS files. '
              'If not specified the JS files will be directly processed.')
+    parser.add_argument('--snapshot-merger', default=None,
+        help='Executable to use to merge snapshots.')
     parser.add_argument('-v', '--verbose', default=False,
         help='Enable verbose output.')
 
     options = parser.parse_args()
 
-    if not options.snapshot_tool:
+    if not options.snapshot_generator or not options.snapshot_merger:
         print('Converting JS modules to C arrays (no snapshot)')
+        no_snapshot = True
     else:
-        print('Using "%s" as snapshot tool' % options.snapshot_tool)
+        print('Using "%s" as snapshot generator' % options.snapshot_generator)
+        no_snapshot = False
 
     modules = options.modules.replace(',', ' ').split()
-    js2c(options.buildtype, modules, options.snapshot_tool, options.verbose)
+    js2c(options.buildtype, no_snapshot, modules, options.snapshot_generator,
+         options.snapshot_merger, options.verbose)

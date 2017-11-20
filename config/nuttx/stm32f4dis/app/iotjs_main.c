@@ -54,7 +54,6 @@
 #include <nuttx/config.h>
 
 #include <stdio.h>
-#include "setjmp.h"
 
 /****************************************************************************
  * Public Functions

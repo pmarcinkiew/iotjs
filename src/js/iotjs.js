@@ -16,56 +16,63 @@
 (function() {
   this.global = this;
 
-  function Module(id) {
+  function Native(id) {
     this.id = id;
+    this.filename = id + '.js';
     this.exports = {};
   }
 
 
-  Module.cache = {};
+  Native.cache = {};
 
 
-  Module.require = function(id) {
+  Native.require = function(id) {
     if (id == 'native') {
-      return Module;
+      return Native;
     }
 
-    if (Module.cache[id]) {
-      return Module.cache[id].exports;
+    if (Native.cache[id]) {
+      return Native.cache[id].exports;
     }
 
-    var module = new Module(id);
+    var nativeMod = new Native(id);
 
-    Module.cache[id] = module;
-    module.compile();
+    Native.cache[id] = nativeMod;
+    nativeMod.compile();
 
-    return module.exports;
+    return nativeMod.exports;
   };
 
 
-  Module.prototype.compile = function() {
-    process.compileModule(this, Module.require);
+  Native.prototype.compile = function() {
+    // process.native_sources has a list of pointers to
+    // the source strings defined in 'iotjs_js.h', not
+    // source strings.
+
+    var fn = process.compileNativePtr(this.id);
+    fn(this.exports, Native.require, this);
   };
 
+  global.console = Native.require('console');
+  global.Buffer = Native.require('buffer');
 
-  global.console = Module.require('console');
-  global.Buffer = Module.require('buffer');
+  (function() {
+    var timers = undefined;
 
-  var timers = undefined;
+    var _timeoutHandler = function(mode) {
+      if (timers == undefined) {
+        timers = Native.require('timers');
+      }
+      return timers[mode].apply(this, Array.prototype.slice.call(arguments, 1));
+    };
 
-  var _timeoutHandler = function(mode) {
-    if (timers == undefined) {
-      timers = Module.require('timers');
-    }
-    return timers[mode].apply(this, Array.prototype.slice.call(arguments, 1));
-  };
+    global.setTimeout = _timeoutHandler.bind(this, 'setTimeout');
+    global.setInterval = _timeoutHandler.bind(this, 'setInterval');
+    global.clearTimeout = _timeoutHandler.bind(this, 'clearTimeout');
+    global.clearInterval = _timeoutHandler.bind(this, 'clearInterval');
+  })();
 
-  global.setTimeout = _timeoutHandler.bind(this, 'setTimeout');
-  global.setInterval = _timeoutHandler.bind(this, 'setInterval');
-  global.clearTimeout = _timeoutHandler.bind(this, 'clearTimeout');
-  global.clearInterval = _timeoutHandler.bind(this, 'clearInterval');
-
-  var EventEmitter = Module.require('events').EventEmitter;
+  var EventEmitter = Native.require('events').EventEmitter;
 
   EventEmitter.call(process);
 
@@ -159,6 +166,7 @@
     }
   };
 
-  var module = Module.require('module');
+
+  var module = Native.require('module');
   module.runMain();
 })();

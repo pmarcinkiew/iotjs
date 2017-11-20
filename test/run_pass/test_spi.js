@@ -13,6 +13,15 @@
  * limitations under the License.
  */
 
+/* Description:
+ * Call an asynchronous version of SPI transfer and then a synchronous version
+ * on its callback. Just checks the existance and execution errors of transfer,
+ *
+ * Hardware setup:
+ * Connect CLK, CS, MISO and MOSI pins to a SPI slave. On Artik053 these are
+ * pins 16, 18, 20 and 22 on CON703.
+ */
+
 var assert = require('assert');
 var Spi = require('spi');
 

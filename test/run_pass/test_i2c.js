@@ -13,7 +13,21 @@
  * limitations under the License.
  */
 
-/* This test is based on Raspberry Pi with GY-30 Sensor. */
+/*
+ * Description: Test I2C basic connectivity
+ *
+ * Usage:
+ *
+ * To run this test a GY-30 Sensor is required. Please connect it to:
+ * - RPI3 pins: (2) SDA and (3) SCL
+ * - Artik053 pins: (10) SDA and (8) SCL on CON703 header
+ * - STM32F4DISCOVERY pins: (pb7) SDA1 (pb6) SCL1 on P2 header
+ *
+ * and run
+ *
+ * iotjs ./test_i2c.js
+ *
+ */
 
 var assert = require('assert');
 var pin = require('tools/systemio_common').pin;

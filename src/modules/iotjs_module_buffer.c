@@ -234,48 +234,47 @@ iotjs_jval_t iotjs_bufferwrap_create_buffer(size_t len) {
 }
 
 
-JS_FUNCTION(Buffer) {
-  DJS_CHECK_THIS(object);
-  DJS_CHECK_ARGS(2, object, number);
+JHANDLER_FUNCTION(Buffer) {
+  DJHANDLER_CHECK_THIS(object);
+  DJHANDLER_CHECK_ARGS(2, object, number);
 
-  const iotjs_jval_t jbuiltin = JS_GET_THIS(object);
-  const iotjs_jval_t jbuffer = JS_GET_ARG(0, object);
-  size_t length = JS_GET_ARG(1, number);
+  const iotjs_jval_t jbuiltin = JHANDLER_GET_THIS(object);
+  const iotjs_jval_t jbuffer = JHANDLER_GET_ARG(0, object);
+  size_t length = JHANDLER_GET_ARG(1, number);
 
   iotjs_jval_set_property_jval(jbuiltin, IOTJS_MAGIC_STRING__BUFFER, jbuffer);
 
   iotjs_bufferwrap_create(jbuiltin, length);
-  return jerry_create_undefined();
 }
 
 
-JS_FUNCTION(Compare) {
-  JS_DECLARE_THIS_PTR(bufferwrap, src_buffer_wrap);
-  JS_DECLARE_OBJECT_PTR(0, bufferwrap, dst_buffer_wrap);
+JHANDLER_FUNCTION(Compare) {
+  JHANDLER_DECLARE_THIS_PTR(bufferwrap, src_buffer_wrap);
+  JHANDLER_DECLARE_OBJECT_PTR(0, bufferwrap, dst_buffer_wrap);
 
   int compare = iotjs_bufferwrap_compare(src_buffer_wrap, dst_buffer_wrap);
-  return jerry_create_number(compare);
+  iotjs_jhandler_return_number(jhandler, compare);
 }
 
 
-JS_FUNCTION(Copy) {
-  JS_DECLARE_THIS_PTR(bufferwrap, src_buffer_wrap);
-  DJS_CHECK_ARGS(4, object, number, number, number);
+JHANDLER_FUNCTION(Copy) {
+  JHANDLER_DECLARE_THIS_PTR(bufferwrap, src_buffer_wrap);
+  DJHANDLER_CHECK_ARGS(4, object, number, number, number);
 
-  const iotjs_jval_t jdst_buffer = JS_GET_ARG(0, object);
+  const iotjs_jval_t jdst_buffer = JHANDLER_GET_ARG(0, object);
   iotjs_bufferwrap_t* dst_buffer_wrap =
       iotjs_bufferwrap_from_jbuffer(jdst_buffer);
 
   size_t dst_length = iotjs_bufferwrap_length(dst_buffer_wrap);
   size_t src_length = iotjs_bufferwrap_length(src_buffer_wrap);
 
-  size_t dst_start = iotjs_convert_double_to_sizet(JS_GET_ARG(1, number));
+  size_t dst_start = iotjs_convert_double_to_sizet(JHANDLER_GET_ARG(1, number));
   dst_start = bound_range(dst_start, 0, dst_length);
 
-  size_t src_start = iotjs_convert_double_to_sizet(JS_GET_ARG(2, number));
+  size_t src_start = iotjs_convert_double_to_sizet(JHANDLER_GET_ARG(2, number));
   src_start = bound_range(src_start, 0, src_length);
 
-  size_t src_end = iotjs_convert_double_to_sizet(JS_GET_ARG(3, number));
+  size_t src_end = iotjs_convert_double_to_sizet(JHANDLER_GET_ARG(3, number));
   src_end = bound_range(src_end, 0, src_length);
 
   if (src_end < src_start) {
@@ -286,21 +285,21 @@ JS_FUNCTION(Copy) {
   size_t copied = iotjs_bufferwrap_copy_internal(dst_buffer_wrap, src_data,
                                                  src_start, src_end, dst_start);
 
-  return jerry_create_number(copied);
+  iotjs_jhandler_return_number(jhandler, copied);
 }
 
 
-JS_FUNCTION(Write) {
-  JS_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
-  DJS_CHECK_ARGS(3, string, number, number);
+JHANDLER_FUNCTION(Write) {
+  JHANDLER_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
+  DJHANDLER_CHECK_ARGS(3, string, number, number);
 
-  iotjs_string_t src = JS_GET_ARG(0, string);
+  iotjs_string_t src = JHANDLER_GET_ARG(0, string);
 
   size_t buffer_length = iotjs_bufferwrap_length(buffer_wrap);
-  size_t offset = iotjs_convert_double_to_sizet(JS_GET_ARG(1, number));
+  size_t offset = iotjs_convert_double_to_sizet(JHANDLER_GET_ARG(1, number));
   offset = bound_range(offset, 0, buffer_length);
 
-  size_t length = iotjs_convert_double_to_sizet(JS_GET_ARG(2, number));
+  size_t length = iotjs_convert_double_to_sizet(JHANDLER_GET_ARG(2, number));
   length = bound_range(length, 0, buffer_length - offset);
   length = bound_range(length, 0, iotjs_string_size(&src));
 
@@ -308,21 +307,21 @@ JS_FUNCTION(Write) {
   size_t copied =
       iotjs_bufferwrap_copy_internal(buffer_wrap, src_data, 0, length, offset);
 
-  iotjs_string_destroy(&src);
+  iotjs_jhandler_return_number(jhandler, copied);
 
-  return jerry_create_number(copied);
+  iotjs_string_destroy(&src);
 }
 
 
-JS_FUNCTION(WriteUInt8) {
-  JS_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
-  DJS_CHECK_ARGS(2, number, number);
+JHANDLER_FUNCTION(WriteUInt8) {
+  JHANDLER_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
+  DJHANDLER_CHECK_ARGS(2, number, number);
 
-  const char src[] = { (char)JS_GET_ARG(0, number) };
+  const char src[] = { (char)JHANDLER_GET_ARG(0, number) };
   size_t length = 1;
 
   size_t buffer_length = iotjs_bufferwrap_length(buffer_wrap);
-  size_t offset = iotjs_convert_double_to_sizet(JS_GET_ARG(1, number));
+  size_t offset = iotjs_convert_double_to_sizet(JHANDLER_GET_ARG(1, number));
   offset = bound_range(offset, 0, buffer_length);
   length = bound_range(length, 0, buffer_length - offset);
   length = bound_range(length, 0, 1);
@@ -330,21 +329,21 @@ JS_FUNCTION(WriteUInt8) {
   size_t copied =
       iotjs_bufferwrap_copy_internal(buffer_wrap, src, 0, length, offset);
 
-  return jerry_create_number(copied);
+  iotjs_jhandler_return_number(jhandler, copied);
 }
 
 
-JS_FUNCTION(HexWrite) {
-  JS_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
-  DJS_CHECK_ARGS(3, string, number, number);
+JHANDLER_FUNCTION(HexWrite) {
+  JHANDLER_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
+  DJHANDLER_CHECK_ARGS(3, string, number, number);
 
-  iotjs_string_t src = JS_GET_ARG(0, string);
+  iotjs_string_t src = JHANDLER_GET_ARG(0, string);
 
   size_t buffer_length = iotjs_bufferwrap_length(buffer_wrap);
-  size_t offset = iotjs_convert_double_to_sizet(JS_GET_ARG(1, number));
+  size_t offset = iotjs_convert_double_to_sizet(JHANDLER_GET_ARG(1, number));
   offset = bound_range(offset, 0, buffer_length);
 
-  size_t length = iotjs_convert_double_to_sizet(JS_GET_ARG(2, number));
+  size_t length = iotjs_convert_double_to_sizet(JHANDLER_GET_ARG(2, number));
   length = bound_range(length, 0, buffer_length - offset);
 
   const char* src_data = iotjs_string_data(&src);
@@ -356,19 +355,19 @@ JS_FUNCTION(HexWrite) {
   size_t copied =
       iotjs_bufferwrap_copy_internal(buffer_wrap, src_buf, 0, nbytes, offset);
 
+  iotjs_jhandler_return_number(jhandler, copied);
+
   iotjs_buffer_release(src_buf);
   iotjs_string_destroy(&src);
-
-  return jerry_create_number(copied);
 }
 
 
-JS_FUNCTION(ReadUInt8) {
-  JS_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
-  DJS_CHECK_ARGS(1, number);
+JHANDLER_FUNCTION(ReadUInt8) {
+  JHANDLER_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
+  DJHANDLER_CHECK_ARGS(1, number);
 
   size_t buffer_length = iotjs_bufferwrap_length(buffer_wrap);
-  size_t offset = iotjs_convert_double_to_sizet(JS_GET_ARG(0, number));
+  size_t offset = iotjs_convert_double_to_sizet(JHANDLER_GET_ARG(0, number));
   offset = bound_range(offset, 0, buffer_length - 1);
 
   char* buffer = iotjs_bufferwrap_buffer(buffer_wrap);
@@ -378,16 +377,16 @@ JS_FUNCTION(ReadUInt8) {
     result = (uint8_t)buffer[offset];
   }
 
-  return jerry_create_number(result);
+  iotjs_jhandler_return_number(jhandler, result);
 }
 
 
-JS_FUNCTION(Slice) {
-  JS_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
-  DJS_CHECK_ARGS(2, number, number);
+JHANDLER_FUNCTION(Slice) {
+  JHANDLER_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
+  DJHANDLER_CHECK_ARGS(2, number, number);
 
-  int64_t start = JS_GET_ARG(0, number);
-  int64_t end = JS_GET_ARG(1, number);
+  int64_t start = JHANDLER_GET_ARG(0, number);
+  int64_t end = JHANDLER_GET_ARG(1, number);
   size_t start_idx, end_idx;
 
   if (start < 0) {
@@ -427,18 +426,18 @@ JS_FUNCTION(Slice) {
                                  iotjs_bufferwrap_buffer(buffer_wrap),
                                  start_idx, end_idx, 0);
 
-  return jnew_buffer;
+  iotjs_jhandler_return_jval(jhandler, jnew_buffer);
 }
 
 
-JS_FUNCTION(ToString) {
-  JS_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
-  DJS_CHECK_ARGS(2, number, number);
+JHANDLER_FUNCTION(ToString) {
+  JHANDLER_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
+  DJHANDLER_CHECK_ARGS(2, number, number);
 
-  size_t start = iotjs_convert_double_to_sizet(JS_GET_ARG(0, number));
+  size_t start = iotjs_convert_double_to_sizet(JHANDLER_GET_ARG(0, number));
   start = bound_range(start, 0, iotjs_bufferwrap_length(buffer_wrap));
 
-  size_t end = iotjs_convert_double_to_sizet(JS_GET_ARG(1, number));
+  size_t end = iotjs_convert_double_to_sizet(JHANDLER_GET_ARG(1, number));
   end = bound_range(end, 0, iotjs_bufferwrap_length(buffer_wrap));
 
   if (end < start) {
@@ -449,57 +448,57 @@ JS_FUNCTION(ToString) {
 
   const char* data = iotjs_bufferwrap_buffer(buffer_wrap) + start;
   length = strnlen(data, length);
+  iotjs_string_t str = iotjs_string_create_with_size(data, length);
 
-  if (!jerry_is_valid_utf8_string((const jerry_char_t*)data, length)) {
-    return JS_CREATE_ERROR(TYPE, "Invalid UTF-8 string");
-  }
+  iotjs_jhandler_return_string(jhandler, &str);
 
-  return jerry_create_string_sz_from_utf8((const jerry_char_t*)data, length);
+  iotjs_string_destroy(&str);
 }
 
 
-JS_FUNCTION(ToHexString) {
-  JS_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
+JHANDLER_FUNCTION(ToHexString) {
+  JHANDLER_DECLARE_THIS_PTR(bufferwrap, buffer_wrap);
 
   size_t length = iotjs_bufferwrap_length(buffer_wrap);
   const char* data = iotjs_bufferwrap_buffer(buffer_wrap);
-  JS_CHECK(data != NULL);
+  JHANDLER_CHECK(data != NULL);
 
   char* buffer = iotjs_buffer_allocate(length * 2);
-  iotjs_string_t str = iotjs_string_create_with_buffer(buffer, length * 2);
+  char* pc = buffer;
 
   for (size_t i = 0; i < length; i++) {
-    memcpy(buffer, &"0123456789abcdef"[data[i] >> 4 & 0xF], 1);
-    buffer++;
-    memcpy(buffer, &"0123456789abcdef"[data[i] >> 0 & 0xF], 1);
-    buffer++;
+    *pc++ = "0123456789abcdef"[data[i] >> 4 & 0xF];
+    *pc++ = "0123456789abcdef"[data[i] >> 0 & 0xF];
   }
 
-  iotjs_jval_t ret_value = iotjs_jval_create_string(&str);
+  iotjs_string_t str = iotjs_string_create_with_buffer(buffer, length * 2);
+  iotjs_jhandler_return_string(jhandler, &str);
   iotjs_string_destroy(&str);
-
-  return ret_value;
 }
 
 
-JS_FUNCTION(ByteLength) {
-  DJS_CHECK_THIS(object);
-  DJS_CHECK_ARGS(1, string);
+JHANDLER_FUNCTION(ByteLength) {
+  DJHANDLER_CHECK_THIS(object);
+  DJHANDLER_CHECK_ARGS(1, string);
 
-  iotjs_string_t str = JS_GET_ARG(0, string);
+  iotjs_string_t str = JHANDLER_GET_ARG(0, string);
   iotjs_jval_t size = iotjs_jval_get_string_size(&str);
 
+  iotjs_jhandler_return_jval(jhandler, size);
   iotjs_string_destroy(&str);
-  return size;
 }
 
 
 iotjs_jval_t InitBuffer() {
-  iotjs_jval_t buffer = jerry_create_external_function(Buffer);
+  iotjs_jval_t buffer = iotjs_jval_create_function_with_dispatch(Buffer);
 
   iotjs_jval_t prototype = iotjs_jval_create_object();
+  iotjs_jval_t byte_length =
+      iotjs_jval_create_function_with_dispatch(ByteLength);
+
   iotjs_jval_set_property_jval(buffer, IOTJS_MAGIC_STRING_PROTOTYPE, prototype);
-  iotjs_jval_set_method(buffer, IOTJS_MAGIC_STRING_BYTELENGTH, ByteLength);
+  iotjs_jval_set_property_jval(buffer, IOTJS_MAGIC_STRING_BYTELENGTH,
+                               byte_length);
 
   iotjs_jval_set_method(prototype, IOTJS_MAGIC_STRING_COMPARE, Compare);
   iotjs_jval_set_method(prototype, IOTJS_MAGIC_STRING_COPY, Copy);
@@ -512,6 +511,7 @@ iotjs_jval_t InitBuffer() {
   iotjs_jval_set_method(prototype, IOTJS_MAGIC_STRING_TOHEXSTRING, ToHexString);
 
   jerry_release_value(prototype);
+  jerry_release_value(byte_length);
 
   return buffer;
 }

@@ -76,7 +76,8 @@ typedef struct {
 } IOTJS_VALIDATED_STRUCT(iotjs_shutdown_reqwrap_t);
 
 #define THIS iotjs_shutdown_reqwrap_t* shutdown_reqwrap
-iotjs_shutdown_reqwrap_t* iotjs_shutdown_reqwrap_create(iotjs_jval_t jcallback);
+iotjs_shutdown_reqwrap_t* iotjs_shutdown_reqwrap_create(
+    iotjs_jval_t jcallback);
 void iotjs_shutdown_reqwrap_dispatched(THIS);
 uv_shutdown_t* iotjs_shutdown_reqwrap_req(THIS);
 iotjs_jval_t iotjs_shutdown_reqwrap_jcallback(THIS);
@@ -84,6 +85,25 @@ iotjs_jval_t iotjs_shutdown_reqwrap_jcallback(THIS);
 
 
 void AddressToJS(iotjs_jval_t obj, const sockaddr* addr);
+
+iotjs_string_t iotjs_create_ip(const iotjs_string_t* address);
+
+#define GetSockNameFunction(wraptype, handletype, function)                    \
+  static void DoGetSockName(iotjs_jhandler_t* jhandler) {                      \
+    DJHANDLER_CHECK_ARGS(1, object);                                           \
+                                                                               \
+    iotjs_##wraptype##_t* wrap =                                               \
+        iotjs_##wraptype##_from_jobject(JHANDLER_GET_THIS(object));            \
+    IOTJS_ASSERT(wrap != NULL);                                                \
+                                                                               \
+    sockaddr_storage storage;                                                  \
+    int addrlen = sizeof(storage);                                             \
+    sockaddr* const addr = (sockaddr*)(&storage);                              \
+    int err = function(iotjs_##wraptype##_##handletype(wrap), addr, &addrlen); \
+    if (err == 0)                                                              \
+      AddressToJS(JHANDLER_GET_ARG(0, object), addr);                          \
+    iotjs_jhandler_return_number(jhandler, err);                               \
+  }
 
 
 #endif /* IOTJS_MODULE_TCP_H */

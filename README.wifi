@@ -1,0 +1,20 @@
+TODO: find a better place for this mini-guide.
+
+In order to connect the Artik to a WiFi network, the following steps are recommended:
+
+1. Build and flash the board
+$ tools/precommit.py --test=artik053 --buildtype=debug && (cd deps/tiznert/os; make download ALL)
+   Run the board (as in: power cycle or reset by pressing SW700 'RESET' microswitch.
+
+2. Enable WiFi and connect to a network
+$ wifi startsta
+   Verify WiFi is working by scanning networks:
+$ wifi scan
+   Join selected network:
+$ wifi join <network ssid> [pasphrasse]
+
+3. Configure network interface
+   DHCP variant:
+$ ifconfig wl1 dhcp
+   Static IP (?):
+$ ifconfig wl1 <ip address> gw <gateway> dns <dns address>

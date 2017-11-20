@@ -18,20 +18,22 @@
 
 
 // Only for test driver
-JS_FUNCTION(IsAliveExceptFor) {
-  JS_CHECK(jargc == 1);
+JHANDLER_FUNCTION(IsAliveExceptFor) {
+  JHANDLER_CHECK(iotjs_jhandler_get_arg_length(jhandler) == 1);
   const iotjs_environment_t* env = iotjs_environment_get();
   uv_loop_t* loop = iotjs_environment_loop(env);
 
-  if (jerry_value_is_null(jargv[0])) {
+  const iotjs_jval_t arg0 = iotjs_jhandler_get_arg(jhandler, 0);
+
+  if (jerry_value_is_null(arg0)) {
     int alive = uv_loop_alive(loop);
 
-    return jerry_create_boolean(alive);
+    iotjs_jhandler_return_boolean(jhandler, alive);
   } else {
-    JS_CHECK(jerry_value_is_object(jargv[0]));
+    JHANDLER_CHECK(jerry_value_is_object(arg0));
 
     iotjs_jval_t jtimer =
-        iotjs_jval_get_property(jargv[0], IOTJS_MAGIC_STRING_HANDLER);
+        iotjs_jval_get_property(arg0, IOTJS_MAGIC_STRING_HANDLER);
 
     iotjs_timerwrap_t* timer_wrap = iotjs_timerwrap_from_jobject(jtimer);
     jerry_release_value(jtimer);
@@ -55,7 +57,7 @@ JS_FUNCTION(IsAliveExceptFor) {
       }
     }
 
-    return jerry_create_boolean(ret);
+    iotjs_jhandler_return_boolean(jhandler, ret);
   }
 }
 

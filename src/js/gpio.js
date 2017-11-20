@@ -14,8 +14,9 @@
  */
 
 var EventEmitter = require('events').EventEmitter;
-var gpio = native;
+var gpio = process.binding(process.binding.gpio);
 var util = require('util');
+
 
 var defaultConfiguration = {
   direction: gpio.DIRECTION.OUT,
