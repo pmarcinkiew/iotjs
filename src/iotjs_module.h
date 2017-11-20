@@ -52,6 +52,7 @@ typedef iotjs_jval_t (*register_func)();
   E(F, TESTDRIVER, Testdriver, testdriver)       \
   E(F, TCP, Tcp, tcp)                            \
   E(F, TIMER, Timer, timer)                      \
+  E(F, TLS, Tls, tls)                            \
   E(F, UART, Uart, uart)                         \
   E(F, UDP, Udp, udp)
 

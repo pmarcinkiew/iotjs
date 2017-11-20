@@ -199,6 +199,9 @@ foreach(module ${IOTJS_JS_MODULES})
   message(STATUS "${module}")
 endforeach()
 
+
+set( MBEDTLS_INCLUDE_DIR "${ROOT_DIR}/deps/tizenrt/external/include" )
+
 # Print out some configs
 message("IoT.js configured with:")
 message(STATUS "CMAKE_BUILD_TYPE         ${CMAKE_BUILD_TYPE}")
@@ -215,6 +218,7 @@ message(STATUS "IOTJS_INCLUDE_MODULE     ${IOTJS_INCLUDE_MODULE}")
 message(STATUS "IOTJS_EXCLUDE_MODULE     ${IOTJS_EXCLUDE_MODULE}")
 message(STATUS "IOTJS_C_FLAGS            ${IOTJS_C_FLAGS}")
 message(STATUS "IOTJS_LINK_FLAGS         ${IOTJS_LINK_FLAGS}")
+message(STATUS "MBEDTLS_INCLUDE_DIR ${MBEDTLS_INCLUDE_DIR}")
 
 # Collect all sources into LIB_IOTJS_SRC
 file(GLOB LIB_IOTJS_SRC ${IOTJS_SOURCE_DIR}/*.c)
@@ -239,6 +243,7 @@ set(IOTJS_INCLUDE_DIRS
   ${MBEDTLS_INCLUDE_DIR}
   ${TUV_INCLUDE_DIR}
 )
+
 
 set(IOTJS_CFLAGS ${IOTJS_CFLAGS} ${CFLAGS_COMMON})
 
