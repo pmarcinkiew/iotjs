@@ -36,26 +36,21 @@ static size_t device_fd_counter = 0;
 
 int32_t iotjs_adc_read(iotjs_adc_t* adc) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_adc_t, adc);
-  int ret, nbytes;
-  size_t readsize, i, nsamples;
-  struct adc_msg_s samples[S5J_ADC_MAX_CHANNELS];
-  ret = ioctl(_this->device_fd, ANIOC_TRIGGER, 0);
+  int ret = ioctl(_this->device_fd, ANIOC_TRIGGER, 0);
   if (ret < 0) {
+    fprintf(stderr, "[%s:%d] ioctl failed %d\n", __FUNCTION__, __LINE__, errno);
     return -1;
   }
-  readsize = sizeof(samples);
+
   while (true) {
-    nbytes = read(_this->device_fd, samples, readsize);
+    struct adc_msg_s samples[S5J_ADC_MAX_CHANNELS];
+    int nbytes = read(_this->device_fd, samples, sizeof(samples));
     if (nbytes > 0) {
-      nsamples = (size_t)nbytes / sizeof(struct adc_msg_s);
-      int sample = -1;
-      for (i = 0; i < nsamples; ++i) {
-        if (_this->pin == samples[i].am_channel) {
-          sample = samples[i].am_data;
+      size_t nsamples = (size_t)nbytes / sizeof(struct adc_msg_s);
+      while (nsamples-- > 0) {
+        if (_this->pin == samples[nsamples].am_channel) {
+          return samples[nsamples].am_data;
         }
-      }
-      if (-1 != sample) {
-        return sample;
       }
     } /* else {
       // The read function is blocking but there are events,
