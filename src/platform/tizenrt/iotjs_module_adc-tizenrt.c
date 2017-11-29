@@ -38,7 +38,7 @@ int32_t iotjs_adc_read(iotjs_adc_t* adc) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_adc_t, adc);
   int ret = ioctl(_this->device_fd, ANIOC_TRIGGER, 0);
   if (ret < 0) {
-    fprintf(stderr, "[%s:%d] ioctl failed %d\n", __FUNCTION__, __LINE__, errno);
+    printf("[%s:%d] ioctl failed %d\n", __FUNCTION__, __LINE__, errno);
     return -1;
   }
 
@@ -48,7 +48,13 @@ int32_t iotjs_adc_read(iotjs_adc_t* adc) {
     if (nbytes > 0) {
       size_t nsamples = (size_t)nbytes / sizeof(struct adc_msg_s);
       while (nsamples-- > 0) {
+        printf("sample get pin: %d channel %d sample %d\n", _this->pin,
+               samples[nsamples].am_channel,
+               samples[nsamples].am_data);
         if (_this->pin == samples[nsamples].am_channel) {
+          printf("sample found pin: %d channel %d sample %d\n", _this->pin,
+                 samples[nsamples].am_channel,
+                 samples[nsamples].am_data);
           return samples[nsamples].am_data;
         }
       }
