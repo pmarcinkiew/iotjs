@@ -56,7 +56,7 @@ bool jerry_port_get_time_zone(jerry_time_zone_t *tz_p) {
  * @return 0
  */
 double jerry_port_get_current_time(void) {
-  return 0;
+  return ((double)time(NULL)) * 1000.0f;
 } /* jerry_port_get_current_time */
 
 /**
