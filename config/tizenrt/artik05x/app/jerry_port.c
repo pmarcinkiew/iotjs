@@ -56,7 +56,10 @@ bool jerry_port_get_time_zone(jerry_time_zone_t *tz_p) {
  * @return 0
  */
 double jerry_port_get_current_time(void) {
-  return 0;
+  struct timeval  tv;
+  gettimeofday(&tv, NULL);
+  double time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
+  return time_in_mill;
 } /* jerry_port_get_current_time */
 
 /**

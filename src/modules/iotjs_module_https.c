@@ -27,6 +27,8 @@
 
 IOTJS_DEFINE_NATIVE_HANDLE_INFO_THIS_MODULE(https);
 
+#ifdef T
+
 //-------------Constructor------------
 iotjs_https_t* iotjs_https_create(const char* URL, const char* method,
                                   const char* ca, const char* cert,
@@ -104,13 +106,19 @@ iotjs_https_t* iotjs_https_create(const char* URL, const char* method,
   return https_data;
 }
 
+#endif
+
 // Destructor
 void iotjs_https_destroy(iotjs_https_t* https_data) {
+#ifdef T
   IOTJS_VALIDATED_STRUCT_DESTRUCTOR(iotjs_https_t, https_data);
   // To shutup unused variable _this warning
   _this->URL = NULL;
   IOTJS_RELEASE(https_data);
+#endif
 }
+
+#ifdef T
 
 //----------------Utility Functions------------------
 void iotjs_https_check_done(iotjs_https_t* https_data) {
@@ -853,8 +861,11 @@ JHANDLER_FUNCTION(Abort) {
   iotjs_jhandler_return_null(jhandler);
 }
 
+#endif
+
 iotjs_jval_t InitHttps() {
   iotjs_jval_t https = iotjs_jval_create_object();
+#ifdef T
 
   iotjs_jval_set_method(https, IOTJS_MAGIC_STRING_CREATEREQUEST, createRequest);
   iotjs_jval_set_method(https, IOTJS_MAGIC_STRING_ADDHEADER, addHeader);
@@ -864,5 +875,6 @@ iotjs_jval_t InitHttps() {
   iotjs_jval_set_method(https, IOTJS_MAGIC_STRING_FINISHREQUEST, finishRequest);
   iotjs_jval_set_method(https, IOTJS_MAGIC_STRING_ABORT, Abort);
 
+#endif
   return https;
 }

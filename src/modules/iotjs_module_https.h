@@ -18,7 +18,10 @@
 
 #include "iotjs_def.h"
 #include <uv.h>
+
+#ifdef TEST
 #include <curl/curl.h>
+#endif
 
 typedef enum {
   HTTPS_GET = 0,
@@ -42,6 +45,8 @@ typedef enum {
 
 // A Per-Request Struct, native bound to https.ClientRequest
 typedef struct {
+
+#ifdef T
   // Original Request Details
   const char* URL;
   HTTPS_Methods method;
@@ -82,6 +87,7 @@ typedef struct {
   iotjs_jval_t read_callback;
   iotjs_jval_t read_onwrite;
   uv_timer_t async_read_onwrite;
+#endif
 
 } IOTJS_VALIDATED_STRUCT(iotjs_https_t);
 
@@ -90,6 +96,8 @@ iotjs_https_t* iotjs_https_create(const char* URL, const char* method,
                                   const char* key,
                                   const bool reject_unauthorized,
                                   const iotjs_jval_t* jthis);
+
+#ifdef T
 
 #define THIS iotjs_https_t* https_data
 // Some utility functions
@@ -150,5 +158,7 @@ uv_poll_t* iotjs_https_poll_get_poll_handle(iotjs_https_poll_t* poll_data);
 void iotjs_https_poll_close(iotjs_https_poll_t* poll_data);
 void iotjs_https_poll_destroy(iotjs_https_poll_t* poll_data);
 void iotjs_https_poll_close_all(iotjs_https_poll_t* head);
+
+#endif
 
 #endif /* IOTJS_MODULE_HTTPS_H */
