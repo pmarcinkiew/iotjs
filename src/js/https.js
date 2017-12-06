@@ -12,19 +12,44 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+if (process.platform === 'tizenrt') {
+    var console = require('console');
 
-var client = require('https_client');
+    function ClientRequest(options, cb) {
+        var res = {
+          statusCode: 200,
+          on: function(str, callback) {
+            console.log('res.on(' + str + ')');
+          }
+        };
+        cb.call(this, res);
+    };
+    ClientRequest.prototype.write = function(data) {
+      console.log(data);
+    };
+    ClientRequest.prototype.end = function(data) {
+      console.log('end function');
+    };
 
-var ClientRequest = exports.ClientRequest = client.ClientRequest;
+    exports.ClientRequest = ClientRequest;
 
-exports.request = function(options, cb) {
-  return new ClientRequest(options, cb);
-};
+    exports.request = function(options, cb) {
+      return new ClientRequest(options, cb);
+    };
+} else {
+    var client = require('https_client');
 
-exports.METHODS = client.METHODS;
+    var ClientRequest = exports.ClientRequest = client.ClientRequest;
 
-exports.get = function(options, cb) {
-  var req = exports.request(options, cb);
-  req.end();
-  return req;
-};
+    exports.request = function(options, cb) {
+      return new ClientRequest(options, cb);
+    };
+
+    exports.METHODS = client.METHODS;
+
+    exports.get = function(options, cb) {
+      var req = exports.request(options, cb);
+      req.end();
+      return req;
+    };
+}
