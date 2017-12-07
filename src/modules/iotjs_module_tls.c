@@ -19,6 +19,19 @@
 #include MBEDTLS_CONFIG_FILE
 #endif
 
+
+#include <tinyara/config.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#include <tinyara/net/dns.h>
+#include <netdb.h>
+#include <sys/socket.h>
+
+#include <net/lwip/ipv4/inet.h>
+
 #if defined(MBEDTLS_PLATFORM_C)
 #include "mbedtls/platform.h"
 #else
@@ -230,6 +243,7 @@ void iotjs_tls_open_worker(uv_work_t* work_req) {
 JHANDLER_FUNCTION(TlsConstructor) {
   DJHANDLER_CHECK_THIS(object);
 
+
   // Create TLS object
   const iotjs_jval_t jtls = JHANDLER_GET_THIS(object);
   iotjs_tls_t* tls = iotjs_tls_create(jtls);
@@ -272,6 +286,8 @@ JHANDLER_FUNCTION(TlsConstructor) {
 JHANDLER_FUNCTION(ReadSync) {
   JHANDLER_DECLARE_THIS_PTR(tls, tls);
 
+  int ret = -666;
+
   // IP address, host, path, data, bearer
   DJHANDLER_CHECK_ARGS(2, string, string);
   iotjs_string_t address = JHANDLER_GET_ARG(0, string);
@@ -280,10 +296,58 @@ JHANDLER_FUNCTION(ReadSync) {
   const char* str_host = iotjs_string_data(&host);
 
 
+
+	struct hostent *shost = NULL;
+//#ifdef CONFIG_NETDB_DNSSERVER_IPv4
+	struct sockaddr_in dns;
+//#endif
+
+//	if (argc < 2) {
+//		show_usage(argv[0]);
+//		return 0;
+//	}
+
+//	if (argc == 3 && argv[2] != NULL) {
+//#ifdef CONFIG_NETDB_DNSSERVER_IPv4
+  char dnsServer[] = "8.8.8.8";
+		printf("dnsclient : dns_add_nameserver : %s\n", dnsServer);
+		dns.sin_family = AF_INET;
+		dns.sin_port = htons(53);
+		dns.sin_addr.s_addr = inet_addr(dnsServer);
+		dns_add_nameserver((FAR struct sockaddr *)&dns, sizeof(struct sockaddr_in));
+//#endif
+//#ifdef CONFIG_NETDB_DNSSERVER_BY_DHCP
+		printf("dnsclient : dns server address is set by DHCP\n");
+//#endif
+//	}
+
+    char* baseHostname = strdup(str_address);
+
+    char hostname[256];
+
+	memset(hostname, 0x00, sizeof(hostname));
+
+
+	strncpy(hostname, baseHostname, sizeof(hostname));
+	printf("\nHostname : %s [len %d]\n", hostname, strlen(hostname));
+
+    char* hostIpAddr = NULL;
+
+	if ((shost = gethostbyname(hostname)) == NULL || shost->h_addr_list == NULL) {
+		printf("dnsclient : failed to resolve host's IP address, shost %p\n",
+               shost);
+		goto exit;
+	} else {
+		printf("DNS results\n");
+        hostIpAddr = ip_ntoa((ip_addr_t *)shost->h_addr_list[0]);
+		printf("IP Address : %s\n", ip_ntoa((ip_addr_t *)shost->h_addr_list[0]));
+	}
+
+
+
 /************** from here *****************************************************/
 
 
-    int ret;
     size_t len;
     mbedtls_net_context server_fd;
     uint32_t flags;
@@ -331,7 +395,7 @@ JHANDLER_FUNCTION(ReadSync) {
      * 1. Start the connection
      */
 
-    if( ( ret = mbedtls_net_connect( &server_fd, str_address,
+    if( ( ret = mbedtls_net_connect( &server_fd, hostIpAddr,
                                          SERVER_PORT, MBEDTLS_NET_PROTO_TCP ) ) != 0 )
     {
         goto exit;
@@ -457,8 +521,13 @@ exit:
     if( ret != 0 )
     {
         char error_buf[100];
-        mbedtls_strerror( ret, error_buf, 100 );
-        mbedtls_printf("Last error was: %d - %s\n\n", ret, error_buf );
+        if (ret == -666) {
+          mbedtls_strerror( ret, error_buf, 100 );
+          mbedtls_printf("Last error was: %d - %s\n\n", ret, error_buf );
+        } else {
+          mbedtls_printf("Last error was: something bad, very bad happened"
+                         " during invocations of DNS server\n\n");
+        }
     }
 #endif
 
