@@ -43,7 +43,7 @@ if (process.platform === 'tizenrt') {
                   "\r\n" +
                   "\r\n";
           //FIXME: DNS is still not working correctly for Tizen RT
-          var value = tls0.readSync("52.86.204.150", //IP
+          var value = tls0.readSync(options.hostname, //IP
                                     http);
           value = (value.split("\r\n\r\n"))[1];
           var data = tls0.closeSync();
