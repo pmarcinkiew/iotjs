@@ -19,6 +19,19 @@
 #include MBEDTLS_CONFIG_FILE
 #endif
 
+
+#include <tinyara/config.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#include <tinyara/net/dns.h>
+#include <netdb.h>
+#include <sys/socket.h>
+
+#include <net/lwip/ipv4/inet.h>
+
 #if defined(MBEDTLS_PLATFORM_C)
 #include "mbedtls/platform.h"
 #else
@@ -57,20 +70,8 @@ int main( void )
 #include <string.h>
 
 #define SERVER_PORT "443"
-#define SERVER_NAME "172.217.16.46"
-#define GET_REQUEST "GET / HTTP/1.0\r\n\r\n"
+#define GET_REQUEST "%s"
 
-#define DEBUG_LEVEL 1
-
-static void my_debug( void *ctx, int level,
-                      const char *file, int line,
-                      const char *str )
-{
-    ((void) level);
-
-    mbedtls_fprintf( (FILE *) ctx, "%s:%04d: %s", file, line, str );
-    fflush(  (FILE *) ctx  );
-}
 
 #include "iotjs_def.h"
 #include "iotjs_module_tls.h"
@@ -242,6 +243,7 @@ void iotjs_tls_open_worker(uv_work_t* work_req) {
 JHANDLER_FUNCTION(TlsConstructor) {
   DJHANDLER_CHECK_THIS(object);
 
+
   // Create TLS object
   const iotjs_jval_t jtls = JHANDLER_GET_THIS(object);
   iotjs_tls_t* tls = iotjs_tls_create(jtls);
@@ -278,15 +280,74 @@ JHANDLER_FUNCTION(TlsConstructor) {
   }
 }
 
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 
 JHANDLER_FUNCTION(ReadSync) {
   JHANDLER_DECLARE_THIS_PTR(tls, tls);
 
+  int ret = -666;
+
+  // IP address, host, path, data, bearer
+  DJHANDLER_CHECK_ARGS(2, string, string);
+  iotjs_string_t address = JHANDLER_GET_ARG(0, string);
+  iotjs_string_t host = JHANDLER_GET_ARG(1, string);
+  const char* str_address = iotjs_string_data(&address);
+  const char* str_host = iotjs_string_data(&host);
+
+
+
+	struct hostent *shost = NULL;
+//#ifdef CONFIG_NETDB_DNSSERVER_IPv4
+	struct sockaddr_in dns;
+//#endif
+
+//	if (argc < 2) {
+//		show_usage(argv[0]);
+//		return 0;
+//	}
+
+//	if (argc == 3 && argv[2] != NULL) {
+//#ifdef CONFIG_NETDB_DNSSERVER_IPv4
+  char dnsServer[] = "8.8.8.8";
+		printf("dnsclient : dns_add_nameserver : %s\n", dnsServer);
+		dns.sin_family = AF_INET;
+		dns.sin_port = htons(53);
+		dns.sin_addr.s_addr = inet_addr(dnsServer);
+		dns_add_nameserver((FAR struct sockaddr *)&dns, sizeof(struct sockaddr_in));
+//#endif
+//#ifdef CONFIG_NETDB_DNSSERVER_BY_DHCP
+		printf("dnsclient : dns server address is set by DHCP\n");
+//#endif
+//	}
+
+    char* baseHostname = strdup(str_address);
+
+    char hostname[256];
+
+	memset(hostname, 0x00, sizeof(hostname));
+
+
+	strncpy(hostname, baseHostname, sizeof(hostname));
+	printf("\nHostname : %s [len %d]\n", hostname, strlen(hostname));
+
+    char* hostIpAddr = NULL;
+
+	if ((shost = gethostbyname(hostname)) == NULL || shost->h_addr_list == NULL) {
+		printf("dnsclient : failed to resolve host's IP address, shost %p\n",
+               shost);
+		goto exit;
+	} else {
+		printf("DNS results\n");
+        hostIpAddr = ip_ntoa((ip_addr_t *)shost->h_addr_list[0]);
+		printf("IP Address : %s\n", ip_ntoa((ip_addr_t *)shost->h_addr_list[0]));
+	}
+
+
+
 /************** from here *****************************************************/
 
 
-    int ret;
     size_t len;
     mbedtls_net_context server_fd;
     uint32_t flags;
@@ -299,10 +360,6 @@ JHANDLER_FUNCTION(ReadSync) {
     mbedtls_ssl_config conf;
     mbedtls_x509_crt cacert;
 
-#if defined(MBEDTLS_DEBUG_C)
-    mbedtls_debug_set_threshold( DEBUG_LEVEL );
-#endif
-
     /*
      * 0. Initialize the RNG and the session data
      */
@@ -312,84 +369,65 @@ JHANDLER_FUNCTION(ReadSync) {
     mbedtls_x509_crt_init( &cacert );
     mbedtls_ctr_drbg_init( &ctr_drbg );
 
-    mbedtls_printf( "\n  . Seeding the random number generator..." );
-    fflush( stdout );
 
     mbedtls_entropy_init( &entropy );
     if( ( ret = mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy,
                                (const unsigned char *) pers,
                                strlen( pers ) ) ) != 0 )
     {
-        mbedtls_printf( " failed\n  ! mbedtls_ctr_drbg_seed returned %d\n", ret );
         goto exit;
     }
 
-    mbedtls_printf( " ok\n" );
 
     /*
      * 0. Initialize certificates
      */
-    mbedtls_printf( "  . Loading the CA root certificate ..." );
-    fflush( stdout );
 
     ret = mbedtls_x509_crt_parse( &cacert, (const unsigned char *) mbedtls_test_cas_pem,
                           mbedtls_test_cas_pem_len );
     if( ret < 0 )
     {
-        mbedtls_printf( " failed\n  !  mbedtls_x509_crt_parse returned -0x%x\n\n", -ret );
         goto exit;
     }
 
-    mbedtls_printf( " ok (%d skipped)\n", ret );
 
     /*
      * 1. Start the connection
      */
-    mbedtls_printf( "  . Connecting to tcp/%s/%s...", SERVER_NAME, SERVER_PORT );
-    fflush( stdout );
 
-    if( ( ret = mbedtls_net_connect( &server_fd, SERVER_NAME,
+    if( ( ret = mbedtls_net_connect( &server_fd, hostIpAddr,
                                          SERVER_PORT, MBEDTLS_NET_PROTO_TCP ) ) != 0 )
     {
-        mbedtls_printf( " failed\n  ! mbedtls_net_connect returned %d\n\n", ret );
         goto exit;
     }
 
-    mbedtls_printf( " ok\n" );
 
     /*
      * 2. Setup stuff
      */
-    mbedtls_printf( "  . Setting up the SSL/TLS structure..." );
-    fflush( stdout );
 
     if( ( ret = mbedtls_ssl_config_defaults( &conf,
                     MBEDTLS_SSL_IS_CLIENT,
                     MBEDTLS_SSL_TRANSPORT_STREAM,
                     MBEDTLS_SSL_PRESET_DEFAULT ) ) != 0 )
     {
-        mbedtls_printf( " failed\n  ! mbedtls_ssl_config_defaults returned %d\n\n", ret );
         goto exit;
     }
 
-    mbedtls_printf( " ok\n" );
 
     /* OPTIONAL is not optimal for security,
      * but makes interop easier in this simplified example */
     mbedtls_ssl_conf_authmode( &conf, MBEDTLS_SSL_VERIFY_OPTIONAL );
     mbedtls_ssl_conf_ca_chain( &conf, &cacert, NULL );
     mbedtls_ssl_conf_rng( &conf, mbedtls_ctr_drbg_random, &ctr_drbg );
-    mbedtls_ssl_conf_dbg( &conf, my_debug, stdout );
 
     if( ( ret = mbedtls_ssl_setup( &ssl, &conf ) ) != 0 )
     {
-        mbedtls_printf( " failed\n  ! mbedtls_ssl_setup returned %d\n\n", ret );
         goto exit;
     }
 
     if( ( ret = mbedtls_ssl_set_hostname( &ssl, "mbed TLS Server 1" ) ) != 0 )
     {
-        mbedtls_printf( " failed\n  ! mbedtls_ssl_set_hostname returned %d\n\n", ret );
         goto exit;
     }
 
@@ -398,66 +436,53 @@ JHANDLER_FUNCTION(ReadSync) {
     /*
      * 4. Handshake
      */
-    mbedtls_printf( "  . Performing the SSL/TLS handshake..." );
-    fflush( stdout );
 
     while( ( ret = mbedtls_ssl_handshake( &ssl ) ) != 0 )
     {
-        mbedtls_printf( " inside handshake" );
-        fflush( stdout );
         if( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE )
         {
-            mbedtls_printf( " failed\n  ! mbedtls_ssl_handshake returned -0x%x\n\n", -ret );
             goto exit;
         }
     }
 
-    mbedtls_printf( " ok\n" );
 
     /*
      * 5. Verify the server certificate
      */
-    mbedtls_printf( "  . Verifying peer X.509 certificate..." );
 
     /* In real life, we probably want to bail out when ret != 0 */
     if( ( flags = mbedtls_ssl_get_verify_result( &ssl ) ) != 0 )
     {
         char vrfy_buf[512];
 
-        mbedtls_printf( " failed\n" );
 
         mbedtls_x509_crt_verify_info( vrfy_buf, sizeof( vrfy_buf ), "  ! ", flags );
 
-        mbedtls_printf( "%s\n", vrfy_buf );
     }
-    else
-        mbedtls_printf( " ok\n" );
 
     /*
      * 3. Write the GET request
      */
-    mbedtls_printf( "  > Write to server:" );
-    fflush( stdout );
 
-    len = (size_t)(sprintf( (char *) buf, GET_REQUEST ));
+    len = (size_t)(snprintf( (char *) buf, sizeof(buf), GET_REQUEST,
+                            str_host));
 
     while( ( ret = mbedtls_ssl_write( &ssl, buf, len ) ) <= 0 )
     {
         if( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE )
         {
-            mbedtls_printf( " failed\n  ! mbedtls_ssl_write returned %d\n\n", ret );
             goto exit;
         }
     }
 
     len = (size_t)ret;
-    mbedtls_printf( " %d bytes written\n\n%s", len, (char *) buf );
 
     /*
      * 7. Read the HTTP response
      */
-    mbedtls_printf( "  < Read from server:" );
-    fflush( stdout );
+
+    char buffer[1024];
+    size_t position = 0;
 
     do
     {
@@ -473,20 +498,20 @@ JHANDLER_FUNCTION(ReadSync) {
 
         if( ret < 0 )
         {
-            mbedtls_printf( "failed\n  ! mbedtls_ssl_read returned %d\n\n", ret );
             break;
         }
 
         if( ret == 0 )
         {
-            mbedtls_printf( "\n\nEOF\n\n" );
             break;
         }
 
         len = (size_t)ret;
-        mbedtls_printf( " %d bytes read\n\n%s", len, (char *) buf );
+        memcpy(buffer + position, buf, MIN(len, sizeof(buffer) - position - 1));
+        position = MIN(position + len, sizeof(buffer) - 1);
     }
     while( 1 );
+    buffer[position] = '\0';
 
     mbedtls_ssl_close_notify( &ssl );
 
@@ -496,8 +521,13 @@ exit:
     if( ret != 0 )
     {
         char error_buf[100];
-        mbedtls_strerror( ret, error_buf, 100 );
-        mbedtls_printf("Last error was: %d - %s\n\n", ret, error_buf );
+        if (ret == -666) {
+          mbedtls_strerror( ret, error_buf, 100 );
+          mbedtls_printf("Last error was: %d - %s\n\n", ret, error_buf );
+        } else {
+          mbedtls_printf("Last error was: something bad, very bad happened"
+                         " during invocations of DNS server\n\n");
+        }
     }
 #endif
 
@@ -509,10 +539,6 @@ exit:
     mbedtls_ctr_drbg_free( &ctr_drbg );
     mbedtls_entropy_free( &entropy );
 
-#if defined(_WIN32)
-    mbedtls_printf( "  + Press Enter to exit this program.\n" );
-    fflush( stdout ); getchar();
-#endif
 
 #endif /* MBEDTLS_BIGNUM_C && MBEDTLS_ENTROPY_C && MBEDTLS_SSL_TLS_C &&
           MBEDTLS_SSL_CLI_C && MBEDTLS_NET_C && MBEDTLS_RSA_C &&
@@ -525,7 +551,8 @@ exit:
   if (value < 0) {
     JHANDLER_THROW(COMMON, "TLS Read Error");
   } else {
-    iotjs_jhandler_return_number(jhandler, value);
+    //iotjs_jhandler_return_number(jhandler, value);
+    iotjs_jhandler_return_string_raw(jhandler, buffer);
   }
 }
 
