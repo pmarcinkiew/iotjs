@@ -27,12 +27,14 @@
 
 IOTJS_DEFINE_NATIVE_HANDLE_INFO_THIS_MODULE(https);
 
+#if !defined(__NUTTX__) && !defined(__TIZENRT__)
+
 //-------------Constructor------------
 iotjs_https_t* iotjs_https_create(const char* URL, const char* method,
                                   const char* ca, const char* cert,
                                   const char* key,
                                   const bool reject_unauthorized,
-                                  const iotjs_jval_t* jthis) {
+                                  iotjs_jval_t jthis) {
   iotjs_https_t* https_data = IOTJS_ALLOC(iotjs_https_t);
   IOTJS_VALIDATED_STRUCT_CONSTRUCTOR(iotjs_https_t, https_data);
 
@@ -104,13 +106,19 @@ iotjs_https_t* iotjs_https_create(const char* URL, const char* method,
   return https_data;
 }
 
+#endif // !defined(__NUTTX__) && !defined(__TIZENRT__)
+
 // Destructor
 void iotjs_https_destroy(iotjs_https_t* https_data) {
+#if !defined(__NUTTX__) && !defined(__TIZENRT__)
   IOTJS_VALIDATED_STRUCT_DESTRUCTOR(iotjs_https_t, https_data);
   // To shutup unused variable _this warning
   _this->URL = NULL;
   IOTJS_RELEASE(https_data);
+#endif // !defined(__NUTTX__) && !defined(__TIZENRT__)
 }
+
+#if !defined(__NUTTX__) && !defined(__TIZENRT__)
 
 //----------------Utility Functions------------------
 void iotjs_https_check_done(iotjs_https_t* https_data) {
@@ -291,7 +299,7 @@ void iotjs_https_initialize_curl_opts(iotjs_https_t* https_data) {
 }
 
 // Get https.ClientRequest from struct
-iotjs_jval_t* iotjs_https_jthis_from_https(iotjs_https_t* https_data) {
+iotjs_jval_t iotjs_https_jthis_from_https(iotjs_https_t* https_data) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_https_t, https_data);
   return _this->jthis_native;
 }
@@ -299,7 +307,7 @@ iotjs_jval_t* iotjs_https_jthis_from_https(iotjs_https_t* https_data) {
 // Call any property of ClientRequest._Incoming
 bool iotjs_https_jcallback(iotjs_https_t* https_data, const char* property,
                            const iotjs_jargs_t* jarg, bool resultvalue) {
-  iotjs_jval_t* jthis = iotjs_https_jthis_from_https(https_data);
+  iotjs_jval_t jthis = iotjs_https_jthis_from_https(https_data);
   bool retval = true;
   if (jerry_value_is_null(jthis))
     return retval;
@@ -364,9 +372,8 @@ void iotjs_https_add_header(iotjs_https_t* https_data,
 
 // Recieved data to write from ClientRequest._write
 void iotjs_https_data_to_write(iotjs_https_t* https_data,
-                               iotjs_string_t read_chunk,
-                               const iotjs_jval_t* callback,
-                               const iotjs_jval_t* onwrite) {
+                               iotjs_string_t read_chunk, iotjs_jval_t callback,
+                               iotjs_jval_t onwrite) {
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_https_t, https_data);
 
   if (_this->to_destroy_read_onwrite) {
@@ -853,8 +860,11 @@ JHANDLER_FUNCTION(Abort) {
   iotjs_jhandler_return_null(jhandler);
 }
 
+#endif // !defined(__NUTTX__) && !defined(__TIZENRT__)
+
 iotjs_jval_t InitHttps() {
   iotjs_jval_t https = iotjs_jval_create_object();
+#if !defined(__NUTTX__) && !defined(__TIZENRT__)
 
   iotjs_jval_set_method(https, IOTJS_MAGIC_STRING_CREATEREQUEST, createRequest);
   iotjs_jval_set_method(https, IOTJS_MAGIC_STRING_ADDHEADER, addHeader);
@@ -864,5 +874,6 @@ iotjs_jval_t InitHttps() {
   iotjs_jval_set_method(https, IOTJS_MAGIC_STRING_FINISHREQUEST, finishRequest);
   iotjs_jval_set_method(https, IOTJS_MAGIC_STRING_ABORT, Abort);
 
+#endif // !defined(__NUTTX__) && !defined(__TIZENRT__)
   return https;
 }
