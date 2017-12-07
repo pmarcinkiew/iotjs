@@ -16,8 +16,9 @@
 var util = require('util');
 var stream = require('stream');
 var Buffer = require('buffer');
-var httpsNative = process.binding(process.binding.https);
-var HTTPParser = process.binding(process.binding.httpparser).HTTPParser;
+
+var httpsNative = require('https_native');
+var HTTPParser = require('httpparser').HTTPParser;
 
 function IncomingMessage(clientRequest) {
   stream.Readable.call(this);

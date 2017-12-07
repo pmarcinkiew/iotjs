@@ -41,7 +41,9 @@ var getResponseHandler = function(res) {
 
   var endHandler = function() {
     var response = JSON.parse(res_body);
+    console.log("Server respose: " + res_body);
     assert.assert(response['data'], 'Recieved incorrect response from server');
+    console.log("HTTPS_POST_CODES IT WORKS...");
     isRequest1Finished = true;
   };
   res.on('end', endHandler);
