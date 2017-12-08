@@ -21,7 +21,7 @@
     "pin": 52
   },
   "sensorDefaultTriggers": {
-    "interval": 20000,
+    "interval": 2000,
     "soilHumidity": false,
     "airHumidity": false,
     "light": false,

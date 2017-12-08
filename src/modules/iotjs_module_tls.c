@@ -417,7 +417,7 @@ JHANDLER_FUNCTION(ReadSync) {
      * 7. Read the HTTP response
      */
 
-    char buffer[1024];
+    char buffer[4096];
     size_t position = 0;
 
     do

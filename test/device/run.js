@@ -13,14 +13,12 @@ var helpers = require("./helpers.js"),
 
 // hack
 console.log("date1: ",Date.now());
-var n = 1512739768000;
-setInterval(function() {
-    n += 1000;
-}, 1000);
+var n = Date.now;
 Date.now = function () {
-  console.log("date: ",n);
-  return Math.floor(n);
+  console.log("date: ",n());
+  return Math.floor(n());
 };
+var lastStep = Date.now();
 
 process.on('exit', function () {
   if (loopInterval) {
@@ -59,10 +57,12 @@ function run(interval) {
   // interval, this would benefit with batteries
   loopInterval = setTimeout(function () {
     console.log('setTimeout');
+    var now = Date.now();
     cdev1.getActions({ // check for pending actions
-      startDate: g1.lastStep,
-      endDate: Date.now()
+      startDate: lastStep,
+      endDate: now
     }, function (error, data) {
+    lastStep = now;
     console.log('setTimeout2', data, error);
       var watered = false;
       if (error) {

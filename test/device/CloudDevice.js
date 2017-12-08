@@ -35,7 +35,7 @@ function request(options, data, callback) {
 
 proto.getActions = function (options, callback) {
   var query = {
-    startDate: options.startDate || 0,
+    startDate: options.startDate || 1,
     ddid: this.deviceId
   };
 
@@ -73,10 +73,13 @@ proto.getActions = function (options, callback) {
     } else {
       var parsed = JSON.parse(data.toString());
       if (parsed.error) {
+      console.log(1);
         callback(parsed.error.message);
       } else {
-        if (data.size > 0) {
-          result = data.data;
+            console.log(2, parsed.size, parsed.data);
+        if (parsed.size > 0) {
+        console.log(3);
+          result = parsed.data;
         }
         callback(null, result);
       }
