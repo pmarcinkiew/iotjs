@@ -1,5 +1,5 @@
 var helpers = require("./helpers.js"),
-  configuration = helpers.loadJSON("./configuration.json"),
+  configuration = helpers.loadJSON(process.cwd()+"/configuration.json"),
   DEVICE_TYPE_ID = "dt20bd5c58972d4db5aac281dfea0b1648",
   CloudDevice = require('./CloudDevice.js'),
   cdev1 = new CloudDevice({
