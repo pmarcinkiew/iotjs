@@ -1,0 +1,30 @@
+{
+  "device_name": "gardener1",
+  "device_id": "a4cfc838c860459a943c27eeb878688d",
+  "device_token": "fa2ec770d9104401b37f25e66513cbf1",
+  "hostname": "api.artik.cloud",
+  "sensorPinConfiguration": {
+    "waterLevel": {
+      "pin": 46
+    },
+    "light": {
+      "pin": 50
+    },
+    "soilHumidity": {
+      "pin": 47
+    },
+    "overflow": {
+      "pin": 48
+    }
+  },
+  "valvePinConfiguration": {
+    "pin": 52
+  },
+  "sensorDefaultTriggers": {
+    "interval": 2000,
+    "soilHumidity": false,
+    "airHumidity": false,
+    "light": false,
+    "temperature": false
+  }
+}

@@ -18,7 +18,6 @@ var stream = require('stream');
 var util = require('util');
 var Stream = stream.Stream;
 var Duplex = stream.Duplex;
-
 var defaultHighWaterMark = 128;
 
 
@@ -90,7 +89,6 @@ util.inherits(Writable, Stream);
 //    Writable.prototype._onwrite()
 Writable.prototype.write = function(chunk, callback) {
   var state = this._writableState;
-
   if (state.ended) {
     writeAfterEnd(this, callback);
     return false;
@@ -156,13 +154,11 @@ function writeAfterEnd(stream, callback) {
 
 function writeOrBuffer(stream, chunk, callback) {
   var state = stream._writableState;
-
   if (util.isString(chunk)) {
     chunk = new Buffer(chunk);
   }
 
   state.length += chunk.length;
-
   if (!state.ready || state.writing || state.buffer.length > 0) {
     // stream not yet ready or there is pending request to write.
     // push this request into write queue.
