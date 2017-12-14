@@ -19,6 +19,19 @@
 #include MBEDTLS_CONFIG_FILE
 #endif
 
+
+#include <tinyara/config.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#include <tinyara/net/dns.h>
+#include <netdb.h>
+#include <sys/socket.h>
+
+#include <net/lwip/ipv4/inet.h>
+
 #if defined(MBEDTLS_PLATFORM_C)
 #include "mbedtls/platform.h"
 #else
@@ -35,14 +48,14 @@
     !defined(MBEDTLS_NET_C) || !defined(MBEDTLS_RSA_C) ||         \
     !defined(MBEDTLS_CERTS_C) || !defined(MBEDTLS_PEM_PARSE_C) || \
     !defined(MBEDTLS_CTR_DRBG_C) || !defined(MBEDTLS_X509_CRT_PARSE_C)
-int main( void )
+int main(void)
 {
     mbedtls_printf("MBEDTLS_BIGNUM_C and/or MBEDTLS_ENTROPY_C and/or "
            "MBEDTLS_SSL_TLS_C and/or MBEDTLS_SSL_CLI_C and/or "
            "MBEDTLS_NET_C and/or MBEDTLS_RSA_C and/or "
            "MBEDTLS_CTR_DRBG_C and/or MBEDTLS_X509_CRT_PARSE_C "
            "not defined.\n");
-    return( 0 );
+    return(0);
 }
 #else
 
@@ -56,30 +69,21 @@ int main( void )
 
 #include <string.h>
 
-#define SERVER_PORT "443"
-#define SERVER_NAME "172.217.16.46"
-#define GET_REQUEST "GET / HTTP/1.0\r\n\r\n"
+#define SSL_DRBG_SEED "ssl_client1"
+#define SSL_SERVERNAME "mbed TLS Server 1"
+#define SERVER_PORT 443
+#define GET_REQUEST "%s"
 
-#define DEBUG_LEVEL 1
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
-static void my_debug( void *ctx, int level,
-                      const char *file, int line,
-                      const char *str )
-{
-    ((void) level);
-
-    mbedtls_fprintf( (FILE *) ctx, "%s:%04d: %s", file, line, str );
-    fflush(  (FILE *) ctx  );
-}
 
 #include "iotjs_def.h"
 #include "iotjs_module_tls.h"
 #include "iotjs_objectwrap.h"
 
 
+static const char dnsServer[] = "8.8.8.8";
 static JNativeInfoType this_module_native_info = {.free_cb = NULL };
-
-
 static iotjs_tls_t* iotjs_tls_instance_from_jval(iotjs_jval_t jtls);
 
 
@@ -92,13 +96,9 @@ static iotjs_tls_t* iotjs_tls_create(const iotjs_jval_t jtls) {
   return tls;
 }
 
-
 static void iotjs_tls_destroy(iotjs_tls_t* tls) {
   IOTJS_VALIDATED_STRUCT_DESTRUCTOR(iotjs_tls_t, tls);
   iotjs_jobjectwrap_destroy(&_this->jobjectwrap);
-#if defined(__linux__)
-  iotjs_string_destroy(&_this->device);
-#endif
   IOTJS_RELEASE(tls);
 }
 
@@ -185,14 +185,14 @@ static void iotjs_tls_after_work(uv_work_t* work_req, int status) {
     switch (req_data->op) {
       case kTlsOpOpen:
         if (!result) {
-          iotjs_jargs_append_error(&jargs, "Failed to open TLS device");
+          iotjs_jargs_append_error(&jargs, "Failed to open TLS socket");
         } else {
           iotjs_jargs_append_null(&jargs);
         }
         break;
       case kTlsOpRead:
         if (!result) {
-          iotjs_jargs_append_error(&jargs, "Cannot read from TLS device");
+          iotjs_jargs_append_error(&jargs, "Cannot read from TLS socket");
         } else {
           iotjs_jargs_append_null(&jargs);
           iotjs_jargs_append_number(&jargs, req_data->value);
@@ -200,7 +200,7 @@ static void iotjs_tls_after_work(uv_work_t* work_req, int status) {
         break;
       case kTlsOpClose:
         if (!result) {
-          iotjs_jargs_append_error(&jargs, "Cannot close TLS device");
+          iotjs_jargs_append_error(&jargs, "Cannot close TLS socket");
         } else {
           iotjs_jargs_append_null(&jargs);
         }
@@ -227,6 +227,9 @@ static void iotjs_tls_after_work(uv_work_t* work_req, int status) {
 void iotjs_tls_open_worker(uv_work_t* work_req) {
   TLS_WORKER_INIT;
   req_data->result = true;
+
+  //TODO: initialize
+  //TODO: connect
 }
 
 
@@ -248,19 +251,18 @@ JHANDLER_FUNCTION(TlsConstructor) {
   IOTJS_ASSERT(tls == iotjs_tls_instance_from_jval(jtls));
   IOTJS_VALIDATED_STRUCT_METHOD(iotjs_tls_t, tls);
 
+  _this->entropy = NULL;
+  _this->ctr_drbg = NULL;
+  _this->cacert = NULL;
+  _this->ssl_config = NULL;
+  _this->ssl_ctx = NULL;
+  _this->socket_fd = NULL;
+
   const iotjs_jval_t jconfiguration = JHANDLER_GET_ARG_IF_EXIST(0, object);
   if (jerry_value_is_null(jconfiguration)) {
     JHANDLER_THROW(TYPE, "Bad arguments - configuration should be Object");
     return;
   }
-
-#if defined(__linux__)
-  DJHANDLER_GET_REQUIRED_CONF_VALUE(jconfiguration, _this->device,
-                                    IOTJS_MAGIC_STRING_DEVICE, string);
-#elif defined(__NUTTX__) || defined(__TIZENRT__)
-  DJHANDLER_GET_REQUIRED_CONF_VALUE(jconfiguration, _this->pin,
-                                    IOTJS_MAGIC_STRING_PIN, number);
-#endif
 
   if (iotjs_jhandler_get_arg_length(jhandler) > 1) {
     const iotjs_jval_t jcallback = iotjs_jhandler_get_arg(jhandler, 1);
@@ -278,259 +280,348 @@ JHANDLER_FUNCTION(TlsConstructor) {
   }
 }
 
-
-
-JHANDLER_FUNCTION(ReadSync) {
-  JHANDLER_DECLARE_THIS_PTR(tls, tls);
-
-/************** from here *****************************************************/
-
-
-    int ret;
-    size_t len;
-    mbedtls_net_context server_fd;
-    uint32_t flags;
-    unsigned char buf[1024];
-    const char *pers = "ssl_client1";
-
-    mbedtls_entropy_context entropy;
-    mbedtls_ctr_drbg_context ctr_drbg;
-    mbedtls_ssl_context ssl;
-    mbedtls_ssl_config conf;
-    mbedtls_x509_crt cacert;
-
-#if defined(MBEDTLS_DEBUG_C)
-    mbedtls_debug_set_threshold( DEBUG_LEVEL );
+static void describeSSLError(int retcode) {
+#ifdef MBEDTLS_ERROR_C
+  if (retcode != 0) {
+    char buffer[100];
+    mbedtls_strerror(retcode, buffer, sizeof(buffer));
+    mbedtls_printf("Last error was: %d - %s\n\n", retcode, buffer);
+    mbedtls_printf("Last error was: something bad, very bad happened"
+                   " during invocations of DNS server\n\n");
+  }
+#else
+  (void)retcode;
 #endif
+}
 
-    /*
-     * 0. Initialize the RNG and the session data
-     */
-    mbedtls_net_init( &server_fd );
-    mbedtls_ssl_init( &ssl );
-    mbedtls_ssl_config_init( &conf );
-    mbedtls_x509_crt_init( &cacert );
-    mbedtls_ctr_drbg_init( &ctr_drbg );
+static const char* resolveFirst(const char* str_address) {
+  printf("\nHostname : %s [len %d]\n", str_address, strlen(str_address));
+  struct hostent *shost = gethostbyname(str_address);
+  if (shost == NULL || shost->h_addr_list == NULL) {
+    fprintf(stderr, "gethostbyname(%s) failed\n", str_address);
+    return NULL;
+  } else {
+    //printf("DNS results\n");
+    return ip_ntoa((ip_addr_t *)shost->h_addr_list[0]);
+    //printf("IP Address : %s\n", ip_ntoa((ip_addr_t *)shost->h_addr_list[0]));
+  }
+}
 
-    mbedtls_printf( "\n  . Seeding the random number generator..." );
-    fflush( stdout );
+static mbedtls_entropy_context *createEntropy() {
+  mbedtls_entropy_context *entropy = malloc(sizeof(mbedtls_entropy_context));
+  mbedtls_entropy_init(entropy);
+  return entropy;
+}
 
-    mbedtls_entropy_init( &entropy );
-    if( ( ret = mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy,
-                               (const unsigned char *) pers,
-                               strlen( pers ) ) ) != 0 )
-    {
-        mbedtls_printf( " failed\n  ! mbedtls_ctr_drbg_seed returned %d\n", ret );
-        goto exit;
-    }
+static mbedtls_ctr_drbg_context *createDRBG(mbedtls_entropy_context *entropy, const char *pers) {
+  mbedtls_ctr_drbg_context *ctr_drbg = malloc(sizeof(mbedtls_ctr_drbg_context));
+  mbedtls_ctr_drbg_init(ctr_drbg);
 
-    mbedtls_printf( " ok\n" );
+  int result = mbedtls_ctr_drbg_seed(ctr_drbg, mbedtls_entropy_func, &entropy,
+                                     (const unsigned char *)pers, strlen(pers));
+  if (result != 0) {
+    describeSSLError(result);
+    mbedtls_ctr_drbg_free(ctr_drbg);
+    free(ctr_drbg);
+    ctr_drbg = NULL;
+  }
+  return ctr_drbg;
+}
 
-    /*
-     * 0. Initialize certificates
-     */
-    mbedtls_printf( "  . Loading the CA root certificate ..." );
-    fflush( stdout );
+static mbedtls_x509_crt *createSSLCACert(const void *cas_pem, size_t cas_pem_len) {
+  mbedtls_x509_crt *cacert = malloc(sizeof(mbedtls_x509_crt));
+  mbedtls_x509_crt_init(cacert);
+  int result = mbedtls_x509_crt_parse(
+      cacert, (const unsigned char *)cas_pem, cas_pem_len);
+  if (result != 0) {
+    describeSSLError(result);
+    mbedtls_x509_crt_free(cacert);
+    free(cacert);
+    cacert = NULL;
+  }
+  return cacert;
+}
 
-    ret = mbedtls_x509_crt_parse( &cacert, (const unsigned char *) mbedtls_test_cas_pem,
-                          mbedtls_test_cas_pem_len );
-    if( ret < 0 )
-    {
-        mbedtls_printf( " failed\n  !  mbedtls_x509_crt_parse returned -0x%x\n\n", -ret );
-        goto exit;
-    }
+static mbedtls_ssl_config *createSSLConfig(
+    mbedtls_x509_crt *cacert,
+    mbedtls_ctr_drbg_context *ctr_drbg) {
+  mbedtls_ssl_config *ssl_conf = malloc(sizeof(mbedtls_ssl_config));
+  mbedtls_ssl_config_init(ssl_conf);
+  int result = mbedtls_ssl_config_defaults(
+      ssl_conf, MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
 
-    mbedtls_printf( " ok (%d skipped)\n", ret );
-
-    /*
-     * 1. Start the connection
-     */
-    mbedtls_printf( "  . Connecting to tcp/%s/%s...", SERVER_NAME, SERVER_PORT );
-    fflush( stdout );
-
-    if( ( ret = mbedtls_net_connect( &server_fd, SERVER_NAME,
-                                         SERVER_PORT, MBEDTLS_NET_PROTO_TCP ) ) != 0 )
-    {
-        mbedtls_printf( " failed\n  ! mbedtls_net_connect returned %d\n\n", ret );
-        goto exit;
-    }
-
-    mbedtls_printf( " ok\n" );
-
-    /*
-     * 2. Setup stuff
-     */
-    mbedtls_printf( "  . Setting up the SSL/TLS structure..." );
-    fflush( stdout );
-
-    if( ( ret = mbedtls_ssl_config_defaults( &conf,
-                    MBEDTLS_SSL_IS_CLIENT,
-                    MBEDTLS_SSL_TRANSPORT_STREAM,
-                    MBEDTLS_SSL_PRESET_DEFAULT ) ) != 0 )
-    {
-        mbedtls_printf( " failed\n  ! mbedtls_ssl_config_defaults returned %d\n\n", ret );
-        goto exit;
-    }
-
-    mbedtls_printf( " ok\n" );
-
+  if (result != 0) {
+    describeSSLError(result);
+    mbedtls_ssl_config_free(ssl_conf);
+    free(ssl_conf);
+    ssl_conf = NULL;
+  } else {
     /* OPTIONAL is not optimal for security,
      * but makes interop easier in this simplified example */
-    mbedtls_ssl_conf_authmode( &conf, MBEDTLS_SSL_VERIFY_OPTIONAL );
-    mbedtls_ssl_conf_ca_chain( &conf, &cacert, NULL );
-    mbedtls_ssl_conf_rng( &conf, mbedtls_ctr_drbg_random, &ctr_drbg );
-    mbedtls_ssl_conf_dbg( &conf, my_debug, stdout );
+    mbedtls_ssl_conf_authmode(ssl_conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+    mbedtls_ssl_conf_ca_chain(ssl_conf, cacert, NULL);
+    mbedtls_ssl_conf_rng(ssl_conf, mbedtls_ctr_drbg_random, ctr_drbg);
+  }
 
-    if( ( ret = mbedtls_ssl_setup( &ssl, &conf ) ) != 0 )
-    {
-        mbedtls_printf( " failed\n  ! mbedtls_ssl_setup returned %d\n\n", ret );
-        goto exit;
+  return ssl_conf;
+}
+
+static mbedtls_ssl_context *createSSLContext(mbedtls_ssl_config *ssl_config, const char *serverName) {
+  mbedtls_ssl_context *ssl_ctx = malloc(sizeof(mbedtls_ssl_context *));
+  mbedtls_ssl_init(ssl_ctx);
+  int result = mbedtls_ssl_setup(ssl_ctx, ssl_config);
+  if (result == 0) {
+    result = mbedtls_ssl_set_hostname(ssl_ctx, serverName);
+  }
+  if (result != 0) {
+    describeSSLError(result);
+    mbedtls_ssl_free(ssl_ctx);
+    free(ssl_ctx);
+    ssl_ctx = NULL;
+  }
+  return ssl_ctx;
+}
+
+static void cleanupSSLState(iotjs_tls_t* tls) {
+  IOTJS_VALIDATED_STRUCT_METHOD(iotjs_tls_t, tls);
+  if (_this->ssl_ctx && _this->socket_fd) {
+    mbedtls_ssl_close_notify(_this->ssl_ctx);
+  }
+  if (_this->socket_fd) {
+    mbedtls_net_free(_this->socket_fd);
+    free(_this->socket_fd);
+    _this->socket_fd = NULL;
+  }
+  if (_this->ssl_ctx) {
+    mbedtls_ssl_free(_this->ssl_ctx);
+    free(_this->ssl_ctx);
+    _this->ssl_ctx = NULL;
+  }
+  if (_this->ssl_config) {
+    mbedtls_ssl_config_free(_this->ssl_config);
+    free(_this->ssl_config);
+    _this->ssl_config = NULL;
+  }
+  if (_this->cacert) {
+    mbedtls_x509_crt_free(_this->cacert);
+    free(_this->cacert);
+    _this->cacert = NULL;
+  }
+  if (_this->ctr_drbg) {
+    mbedtls_ctr_drbg_free(_this->ctr_drbg);
+    free(_this->ctr_drbg);
+    _this->ctr_drbg = NULL;
+  }
+  if (_this->entropy) {
+    mbedtls_entropy_free(_this->entropy);
+    free(_this->entropy);
+    _this->entropy = NULL;
+  }
+}
+
+static int setupTLSEnvironment(
+    iotjs_tls_t* tls, const char *drbg_seed, const char *serverName) {
+  IOTJS_VALIDATED_STRUCT_METHOD(iotjs_tls_t, tls);
+  do {
+    _this->entropy = createEntropy();
+    if (_this->entropy == NULL) break;
+
+    _this->ctr_drbg = createDRBG(_this->entropy, drbg_seed);
+    if (_this->ctr_drbg == NULL) break;
+
+    _this->cacert = createSSLCACert(mbedtls_test_cas_pem, mbedtls_test_cas_pem_len);
+    if (_this->cacert == NULL) break;
+
+    _this->ssl_config = createSSLConfig(_this->cacert, _this->ctr_drbg);
+    if (_this->ssl_config == NULL) break;
+
+    _this->ssl_ctx = createSSLContext(_this->ssl_config, serverName);
+    if (_this->ssl_ctx == NULL)  break;
+
+    return 0;
+  } while (0);
+  cleanupSSLState(tls);
+  fprintf(stderr, "TLS environment setup failed");
+  return -1;
+}
+
+static mbedtls_net_context *createSSLConnection(
+    mbedtls_ssl_context *ssl_ctx, const char *peerIP, unsigned short port) {
+  mbedtls_net_context *socket_fd = malloc(sizeof(mbedtls_net_context));
+  mbedtls_net_init(socket_fd);
+
+  char port_str[8];
+  sprintf(port_str, "%d", port);
+  int result = mbedtls_net_connect(
+        socket_fd, peerIP, port_str, MBEDTLS_NET_PROTO_TCP);
+  if (result == 0) {
+    mbedtls_ssl_set_bio(
+        ssl_ctx, socket_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+  } else {
+    describeSSLError(result);
+    mbedtls_net_free(socket_fd);
+    free(socket_fd);
+    socket_fd = NULL;
+  }
+  return socket_fd;
+}
+
+static int handshakeAndVerify(iotjs_tls_t* tls) {
+  IOTJS_VALIDATED_STRUCT_METHOD(iotjs_tls_t, tls);
+
+  do {
+    int result = mbedtls_ssl_handshake(_this->ssl_ctx);
+    if (result == MBEDTLS_ERR_SSL_WANT_READ
+        || result == MBEDTLS_ERR_SSL_WANT_WRITE) {
+      continue;
+    }
+    if (result != 0) {
+      describeSSLError(result);
+      return result;
+    }
+  } while (0);
+  /* Verify the server certificate */
+  /* In real life, we probably want to bail out when ret != 0 */
+  uint32_t flags = mbedtls_ssl_get_verify_result(_this->ssl_ctx);
+  if (flags != 0) {
+    char vrfy_buf[512];
+    mbedtls_x509_crt_verify_info(vrfy_buf, sizeof(vrfy_buf), "  ! ", flags);
+  }
+  return 0;
+}
+
+static char *createHTTPGetRequest(const char *host) {
+  char *buffer;
+  if (asprintf(&buffer, GET_REQUEST, host) < 0) {
+    buffer = NULL;
+  }
+  return buffer;
+}
+
+static int writeSSLData(mbedtls_ssl_context *ssl_ctx, const void *data, size_t len) {
+  int result;
+  do {
+    result = mbedtls_ssl_write(ssl_ctx, data, len);
+    if (result == MBEDTLS_ERR_SSL_WANT_READ
+        || result == MBEDTLS_ERR_SSL_WANT_WRITE) {
+      continue;
+    } else if (result != 0) {
+      describeSSLError(result);
+    }
+  } while (0);
+  return result;
+}
+
+static char *readAllocateSSLData(mbedtls_ssl_context *ssl_ctx, size_t max_len) {
+  // Extra byte for terminator.
+  // TODO: what if max_len == MAX_UINT?
+  unsigned char *buffer = malloc(max_len + 1);
+  if (buffer) {
+    int pos = 0;
+    do {
+      size_t len = max_len - (size_t)pos;
+      int chunk = mbedtls_ssl_read(ssl_ctx, buffer + pos, len);
+
+      if (chunk == MBEDTLS_ERR_SSL_WANT_READ
+          || chunk == MBEDTLS_ERR_SSL_WANT_WRITE) continue;
+      if (chunk == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) break;
+      if (chunk <= 0) {
+        describeSSLError(chunk);
+        pos = -1;
+        break;
+      }
+
+      pos += chunk;
+    } while ((size_t)pos < max_len);
+    if (pos > 0) {
+      buffer[pos] = 0;
+    } else {
+      free(buffer);
+      buffer = NULL;
+    }
+  }
+  return (char *)buffer;
+}
+
+JHANDLER_FUNCTION(RequestSync) {
+  JHANDLER_DECLARE_THIS_PTR(tls, tls);
+  IOTJS_VALIDATED_STRUCT_METHOD(iotjs_tls_t, tls);
+  DJHANDLER_CHECK_ARGS(2, string, string);
+
+  // IP address, host, path, data, bearer
+  iotjs_string_t address = JHANDLER_GET_ARG(0, string);
+  iotjs_string_t host = JHANDLER_GET_ARG(1, string);
+  const char* str_address = iotjs_string_data(&address);
+  const char* str_host = iotjs_string_data(&host);
+  const char* hostIpAddr = resolveFirst(str_address);
+
+  int result = -1;
+  do {
+    result = setupTLSEnvironment(tls, SSL_DRBG_SEED, SSL_SERVERNAME);
+    if (result != 0) {
+      describeSSLError(result);
+      break;
     }
 
-    if( ( ret = mbedtls_ssl_set_hostname( &ssl, "mbed TLS Server 1" ) ) != 0 )
-    {
-        mbedtls_printf( " failed\n  ! mbedtls_ssl_set_hostname returned %d\n\n", ret );
-        goto exit;
+    result = -1;
+    _this->socket_fd = createSSLConnection(_this->ssl_ctx, hostIpAddr, SERVER_PORT);
+    if (_this->socket_fd == NULL) {
+      break;
     }
 
-    mbedtls_ssl_set_bio( &ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL );
-
-    /*
-     * 4. Handshake
-     */
-    mbedtls_printf( "  . Performing the SSL/TLS handshake..." );
-    fflush( stdout );
-
-    while( ( ret = mbedtls_ssl_handshake( &ssl ) ) != 0 )
-    {
-        mbedtls_printf( " inside handshake" );
-        fflush( stdout );
-        if( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE )
-        {
-            mbedtls_printf( " failed\n  ! mbedtls_ssl_handshake returned -0x%x\n\n", -ret );
-            goto exit;
-        }
+    if (handshakeAndVerify(tls) != 0) {
+      break;
     }
 
-    mbedtls_printf( " ok\n" );
-
-    /*
-     * 5. Verify the server certificate
-     */
-    mbedtls_printf( "  . Verifying peer X.509 certificate..." );
-
-    /* In real life, we probably want to bail out when ret != 0 */
-    if( ( flags = mbedtls_ssl_get_verify_result( &ssl ) ) != 0 )
-    {
-        char vrfy_buf[512];
-
-        mbedtls_printf( " failed\n" );
-
-        mbedtls_x509_crt_verify_info( vrfy_buf, sizeof( vrfy_buf ), "  ! ", flags );
-
-        mbedtls_printf( "%s\n", vrfy_buf );
-    }
-    else
-        mbedtls_printf( " ok\n" );
-
-    /*
-     * 3. Write the GET request
-     */
-    mbedtls_printf( "  > Write to server:" );
-    fflush( stdout );
-
-    len = (size_t)(sprintf( (char *) buf, GET_REQUEST ));
-
-    while( ( ret = mbedtls_ssl_write( &ssl, buf, len ) ) <= 0 )
-    {
-        if( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE )
-        {
-            mbedtls_printf( " failed\n  ! mbedtls_ssl_write returned %d\n\n", ret );
-            goto exit;
-        }
+    char *request = createHTTPGetRequest(str_host);
+    if (request == NULL) {
+      break;
     }
 
-    len = (size_t)ret;
-    mbedtls_printf( " %d bytes written\n\n%s", len, (char *) buf );
-
-    /*
-     * 7. Read the HTTP response
-     */
-    mbedtls_printf( "  < Read from server:" );
-    fflush( stdout );
-
-    do
-    {
-        len = sizeof( buf ) - 1;
-        memset( buf, 0, sizeof( buf ) );
-        ret = mbedtls_ssl_read( &ssl, buf, len );
-
-        if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
-            continue;
-
-        if( ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY )
-            break;
-
-        if( ret < 0 )
-        {
-            mbedtls_printf( "failed\n  ! mbedtls_ssl_read returned %d\n\n", ret );
-            break;
-        }
-
-        if( ret == 0 )
-        {
-            mbedtls_printf( "\n\nEOF\n\n" );
-            break;
-        }
-
-        len = (size_t)ret;
-        mbedtls_printf( " %d bytes read\n\n%s", len, (char *) buf );
+    if (writeSSLData(_this->ssl_ctx, request, strlen(request)) != 0) {
+      break;
     }
-    while( 1 );
+    free(request);
 
-    mbedtls_ssl_close_notify( &ssl );
-
-exit:
-
-#ifdef MBEDTLS_ERROR_C
-    if( ret != 0 )
-    {
-        char error_buf[100];
-        mbedtls_strerror( ret, error_buf, 100 );
-        mbedtls_printf("Last error was: %d - %s\n\n", ret, error_buf );
+    char *response = readAllocateSSLData(_this->ssl_ctx, 1024);
+    if (response) {
+      // Success, do stuff
+      result = 0;
+      iotjs_jhandler_return_string_raw(jhandler, response);
+      free(response);
     }
-#endif
-
-    mbedtls_net_free( &server_fd );
-
-    mbedtls_x509_crt_free( &cacert );
-    mbedtls_ssl_free( &ssl );
-    mbedtls_ssl_config_free( &conf );
-    mbedtls_ctr_drbg_free( &ctr_drbg );
-    mbedtls_entropy_free( &entropy );
-
-#if defined(_WIN32)
-    mbedtls_printf( "  + Press Enter to exit this program.\n" );
-    fflush( stdout ); getchar();
-#endif
-
+  } while (0);
+  cleanupSSLState(tls);
 #endif /* MBEDTLS_BIGNUM_C && MBEDTLS_ENTROPY_C && MBEDTLS_SSL_TLS_C &&
           MBEDTLS_SSL_CLI_C && MBEDTLS_NET_C && MBEDTLS_RSA_C &&
           MBEDTLS_CERTS_C && MBEDTLS_PEM_PARSE_C && MBEDTLS_CTR_DRBG_C &&
           MBEDTLS_X509_CRT_PARSE_C */
-/************** to here *******************************************************/
-
-
-  int32_t value = 1;// ret;
-  if (value < 0) {
+  if (result < 0) {
     JHANDLER_THROW(COMMON, "TLS Read Error");
-  } else {
-    iotjs_jhandler_return_number(jhandler, value);
   }
 }
 
+static void addDNSServer() {
+//	if (argc == 3 && argv[2] != NULL) {
+//#ifdef CONFIG_NETDB_DNSSERVER_IPv4
+  printf("dnsclient : dns_add_nameserver : %s\n", dnsServer);
+  struct sockaddr_in dns;
+  dns.sin_family = AF_INET;
+  dns.sin_port = htons(53);
+  dns.sin_addr.s_addr = inet_addr(dnsServer);
+  dns_add_nameserver((FAR struct sockaddr *)&dns, sizeof(struct sockaddr_in));
+//#endif
+//#ifdef CONFIG_NETDB_DNSSERVER_BY_DHCP
+  printf("dnsclient : dns server address is set by DHCP\n");
+//#endif
+//	}
+}
+
+
 JHANDLER_FUNCTION(CloseSync) {
   JHANDLER_DECLARE_THIS_PTR(tls, tls);
+  // TODO: move disconnect here maybe?
+  // TODO: then destruct (now it's done within RequestSync)
 
   iotjs_jhandler_return_null(jhandler);
 }
@@ -542,13 +633,15 @@ iotjs_jval_t InitTls() {
   iotjs_jval_set_property_jval(jtls, IOTJS_MAGIC_STRING_TLS, jtlsConstructor);
 
   iotjs_jval_t jprototype = iotjs_jval_create_object();
-  iotjs_jval_set_method(jprototype, IOTJS_MAGIC_STRING_READSYNC, ReadSync);
+  iotjs_jval_set_method(jprototype, IOTJS_MAGIC_STRING_REQUESTSYNC, RequestSync);
   iotjs_jval_set_method(jprototype, IOTJS_MAGIC_STRING_CLOSESYNC, CloseSync);
   iotjs_jval_set_property_jval(jtlsConstructor, IOTJS_MAGIC_STRING_PROTOTYPE,
                                jprototype);
 
   jerry_release_value(jprototype);
   jerry_release_value(jtlsConstructor);
+
+  addDNSServer();
 
   return jtls;
 }

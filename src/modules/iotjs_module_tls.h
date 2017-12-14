@@ -32,12 +32,13 @@ typedef enum {
 typedef struct {
   iotjs_jobjectwrap_t jobjectwrap;
 
-#if defined(__linux__)
-  iotjs_string_t device;
-#elif defined(__NUTTX__) || defined(__TIZENRT__)
-  uint32_t pin;
-#endif
-  int32_t device_fd;
+  mbedtls_entropy_context *entropy;
+  mbedtls_ctr_drbg_context *ctr_drbg;
+  mbedtls_x509_crt *cacert;
+  mbedtls_ssl_config *ssl_config;
+  mbedtls_ssl_context *ssl_ctx;
+
+  mbedtls_net_context *socket_fd;
 } IOTJS_VALIDATED_STRUCT(iotjs_tls_t);
 
 
